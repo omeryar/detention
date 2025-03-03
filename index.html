@@ -795,29 +795,58 @@
                 floatingNote.style.opacity = '0';
             }, 50);
             
-            // Remove the floating note after animation
+            // Remove the floating note after animation and generate new path
             setTimeout(() => {
                 if (floatingNote) {
                     floatingNote.remove();
                     floatingNote = null;
                 }
+                
+                // Reduce player lives
+                playerLives--;
+                updateLivesDisplay();
+                
+                // Generate new path if the game isn't over
+                if (playerLives > 0) {
+                    // Select new random desks for the next path
+                    const desks = getDesks();
+                    let validPathFound = false;
+                    let attempts = 0;
+                    
+                    // Keep trying until we get a valid path
+                    while (!validPathFound && attempts < 10) {
+                        attempts++;
+                        ({ start: startDesk, end: endDesk } = selectRandomDesks(desks));
+                        path = generatePath(startDesk, endDesk);
+                        
+                        // Check if we have a valid path
+                        if (path && path.length > 1) {
+                            validPathFound = true;
+                        }
+                    }
+                    
+                    // If we still don't have a valid path after 10 attempts,
+                    // generate a more direct path between any two desks
+                    if (!validPathFound) {
+                        ({ start: startDesk, end: endDesk } = selectRandomDesks(desks));
+                        path = createDirectPath(startDesk, endDesk);
+                    }
+                    
+                    // Reset note position to new start
+                    notePosition = { ...startDesk };
+                    
+                    // Update the display
+                    updateGridDisplay();
+                } else {
+                    // Game Over
+                    setTimeout(() => {
+                        alert('Game Over! The teacher caught you too many times!');
+                        startNewGame();
+                    }, 500);
+                }
+                
                 isAnimating = false;
             }, 1000);
-            
-            // Reduce player lives
-            playerLives--;
-            updateLivesDisplay();
-            
-            // Reset note position
-            notePosition = { ...startDesk };
-            
-            // Check if game is over
-            if (playerLives <= 0) {
-                setTimeout(() => {
-                    alert('Game Over! The teacher caught you too many times!');
-                    startNewGame();
-                }, 1000);
-            }
         }
 
         function checkWinCondition() {
