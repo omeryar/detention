@@ -17,6 +17,86 @@
         #game-container {
             text-align: center;
         }
+        #teacher-container {
+            margin-bottom: 20px;
+            position: relative;
+            height: 100px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #teacher {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background-color: #795548;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: transform 0.5s ease;
+        }
+        #teacher.facing-blackboard {
+            background-color: #795548;
+        }
+        #teacher.halfway {
+            background-color: #8D6E63;
+        }
+        #teacher.facing-class {
+            background-color: #6D4C41;
+        }
+        #teacher-face {
+            position: absolute;
+            width: 60px;
+            height: 30px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+        .eye {
+            width: 12px;
+            height: 12px;
+            background-color: white;
+            border-radius: 50%;
+            position: relative;
+        }
+        .eye::after {
+            content: "";
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background-color: black;
+            border-radius: 50%;
+            top: 3px;
+            left: 3px;
+        }
+        .mouth {
+            width: 20px;
+            height: 10px;
+            border-bottom: 2px solid white;
+            border-radius: 0 0 10px 10px;
+        }
+        #teacher.facing-blackboard #teacher-face {
+            transform: rotateY(180deg);
+            opacity: 0.2;
+        }
+        #teacher.halfway #teacher-face {
+            transform: rotateY(90deg);
+            opacity: 0.5;
+        }
+        #teacher.facing-class #teacher-face {
+            transform: rotateY(0deg);
+            opacity: 1;
+        }
+        #teacher-status {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 14px;
+            color: #333;
+        }
         #grid {
             display: inline-grid;
             gap: 2px;
@@ -92,6 +172,16 @@
 </head>
 <body>
     <div id="game-container">
+        <div id="teacher-container">
+            <div id="teacher" class="facing-blackboard">
+                <div id="teacher-face">
+                    <div class="eye"></div>
+                    <div class="eye"></div>
+                </div>
+                <div class="mouth"></div>
+            </div>
+            <div id="teacher-status">Safe to move</div>
+        </div>
         <div id="grid"></div>
         <div id="controls">
             <div></div>
@@ -114,10 +204,23 @@
             ISLAND: 'island'
         };
 
+        const TEACHER_STATES = {
+            FACING_BLACKBOARD: 'facing-blackboard',
+            HALFWAY: 'halfway',
+            FACING_CLASS: 'facing-class'
+        };
+
         let grid, path, playerPosition, startIsland, endIsland;
         const gridSize = { rows: 13, cols: 13 };
         const islandSize = { width: 3, height: 2 };
         const numIslands = 12;
+        
+        // Teacher state variables
+        let teacherState = TEACHER_STATES.FACING_BLACKBOARD;
+        let teacherStateTimer;
+        let difficultyLevel = 1;
+        let gameTime = 0;
+        let gameTimer;
 
         function initializeGrid() {
             grid = Array(gridSize.rows).fill().map(() => Array(gridSize.cols).fill(SQUARE_TYPES.ROAD));
@@ -265,6 +368,12 @@
             const clickedPosition = { row, col };
 
             if (isValidMove(clickedPosition)) {
+                if (teacherState === TEACHER_STATES.FACING_CLASS) {
+                    document.getElementById('message').textContent = 'Caught passing notes! Game over.';
+                    stopGame();
+                    return;
+                }
+                
                 playerPosition = clickedPosition;
                 updateGridDisplay();
                 checkWinCondition();
@@ -325,6 +434,12 @@
             
             // If we found a valid next position, move the player there
             if (nextPosition) {
+                if (teacherState === TEACHER_STATES.FACING_CLASS) {
+                    document.getElementById('message').textContent = 'Caught passing notes! Game over.';
+                    stopGame();
+                    return;
+                }
+                
                 playerPosition = nextPosition;
                 updateGridDisplay();
                 checkWinCondition();
@@ -334,6 +449,7 @@
         function checkWinCondition() {
             if (playerPosition.row === endIsland.row && playerPosition.col === endIsland.col) {
                 document.getElementById('message').textContent = 'Congratulations! You reached the end island!';
+                stopGame();
             }
         }
 
@@ -345,6 +461,88 @@
             playerPosition = { ...startIsland };
             renderGrid();
             document.getElementById('message').textContent = '';
+            
+            // Reset teacher and game state
+            difficultyLevel = 1;
+            gameTime = 0;
+            setTeacherState(TEACHER_STATES.FACING_BLACKBOARD);
+            startTeacherBehavior();
+            startGameTimer();
+        }
+        
+        function stopGame() {
+            clearInterval(teacherStateTimer);
+            clearInterval(gameTimer);
+        }
+        
+        function startGameTimer() {
+            if (gameTimer) clearInterval(gameTimer);
+            gameTimer = setInterval(() => {
+                gameTime++;
+                // Increase difficulty every 30 seconds, up to level 5
+                if (gameTime % 30 === 0 && difficultyLevel < 5) {
+                    difficultyLevel++;
+                }
+            }, 1000);
+        }
+        
+        function startTeacherBehavior() {
+            if (teacherStateTimer) clearInterval(teacherStateTimer);
+            updateTeacherState();
+        }
+        
+        function updateTeacherState() {
+            const teacherElement = document.getElementById('teacher');
+            const statusElement = document.getElementById('teacher-status');
+            
+            // Calculate timing based on difficulty
+            const blackboardTime = Math.max(5000 - (difficultyLevel * 500), 2000); // 5s to 2s
+            const halfwayTime = 1000; // Always 1s for transition
+            const classFacingTime = Math.min(2000 + (difficultyLevel * 300), 4000); // 2s to 4s
+            
+            // Transition through states
+            if (teacherState === TEACHER_STATES.FACING_BLACKBOARD) {
+                // From blackboard to halfway
+                setTeacherState(TEACHER_STATES.HALFWAY);
+                teacherStateTimer = setTimeout(() => {
+                    // From halfway to class
+                    setTeacherState(TEACHER_STATES.FACING_CLASS);
+                    teacherStateTimer = setTimeout(() => {
+                        // From class to halfway
+                        setTeacherState(TEACHER_STATES.HALFWAY);
+                        teacherStateTimer = setTimeout(() => {
+                            // From halfway to blackboard
+                            setTeacherState(TEACHER_STATES.FACING_BLACKBOARD);
+                            teacherStateTimer = setTimeout(updateTeacherState, blackboardTime);
+                        }, halfwayTime);
+                    }, classFacingTime);
+                }, halfwayTime);
+            }
+        }
+        
+        function setTeacherState(state) {
+            teacherState = state;
+            const teacherElement = document.getElementById('teacher');
+            const statusElement = document.getElementById('teacher-status');
+            
+            // Remove all state classes
+            teacherElement.classList.remove(
+                TEACHER_STATES.FACING_BLACKBOARD,
+                TEACHER_STATES.HALFWAY,
+                TEACHER_STATES.FACING_CLASS
+            );
+            
+            // Add the current state class
+            teacherElement.classList.add(state);
+            
+            // Update status text
+            if (state === TEACHER_STATES.FACING_CLASS) {
+                statusElement.textContent = 'UNSAFE - Teacher watching!';
+                statusElement.style.color = 'red';
+            } else {
+                statusElement.textContent = 'Safe to move';
+                statusElement.style.color = 'green';
+            }
         }
 
         // Set up event listeners for arrow buttons
