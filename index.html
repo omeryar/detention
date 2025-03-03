@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Detention</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -152,16 +153,33 @@
             z-index: 10;
         }
         .path::after {
-            content: "";
+            font-family: 'Press Start 2P', cursive;
+            content: "▶";  /* Right-pointing triangle */
             position: absolute;
-            width: 10px;
-            height: 10px;
-            background-color: #333;
-            border-radius: 50%;
+            font-size: 12px;
+            color: #333;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
             z-index: 10;
+            text-shadow: 1px 1px 0 #666;
+            image-rendering: pixelated;
+        }
+        .path.up::after {
+            content: "▲";
+            transform: translate(-50%, -50%);
+        }
+        .path.down::after {
+            content: "▼";
+            transform: translate(-50%, -50%);
+        }
+        .path.left::after {
+            content: "◀";
+            transform: translate(-50%, -50%);
+        }
+        .path.right::after {
+            content: "▶";
+            transform: translate(-50%, -50%);
         }
         .note {
             position: absolute;
@@ -255,13 +273,13 @@
     <div id="game-controls">
       <div id="controls">
           <div></div>
-          <div class="arrow-btn" id="up-btn">↑</div>
+          <div class="arrow-btn" id="up-btn">▲</div>
           <div></div>
-          <div class="arrow-btn" id="left-btn">←</div>
+          <div class="arrow-btn" id="left-btn">◀</div>
           <div></div>
-          <div class="arrow-btn" id="right-btn">→</div>
+          <div class="arrow-btn" id="right-btn">▶</div>
           <div></div>
-          <div class="arrow-btn" id="down-btn">↓</div>
+          <div class="arrow-btn" id="down-btn">▼</div>
           <div></div>
       </div>
       <button id="new-game">New Game</button>
@@ -505,9 +523,32 @@
                     cell.textContent = 'E';
                 }
                 
-                // Add path markers
-                if (path.some(p => p.row === row && p.col === col)) {
+                // Add path markers with direction
+                const pathIndex = path.findIndex(p => p.row === row && p.col === col);
+                if (pathIndex !== -1) {
                     cell.classList.add('path');
+                    
+                    // Determine direction by looking at next point in path
+                    if (pathIndex < path.length - 1) {
+                        const nextPoint = path[pathIndex + 1];
+                        const dx = nextPoint.col - col;
+                        const dy = nextPoint.row - row;
+                        
+                        if (dx > 0) cell.classList.add('right');
+                        else if (dx < 0) cell.classList.add('left');
+                        else if (dy > 0) cell.classList.add('down');
+                        else if (dy < 0) cell.classList.add('up');
+                    } else if (pathIndex > 0) {
+                        // For the last point, use the direction from the previous point
+                        const prevPoint = path[pathIndex - 1];
+                        const dx = col - prevPoint.col;
+                        const dy = row - prevPoint.row;
+                        
+                        if (dx > 0) cell.classList.add('right');
+                        else if (dx < 0) cell.classList.add('left');
+                        else if (dy > 0) cell.classList.add('down');
+                        else if (dy < 0) cell.classList.add('up');
+                    }
                 }
                 
                 // Remove any existing note elements
@@ -529,31 +570,6 @@
                     document.body.appendChild(noteElement);
                 }
             }
-        }
-
-        function renderGrid() {
-            const gridElement = document.getElementById('grid');
-            gridElement.style.gridTemplateColumns = `repeat(${gridSize.cols}, 30px)`;
-            gridElement.innerHTML = '';
-
-            // Remove any existing desk containers
-            document.querySelectorAll('.desk-container').forEach(desk => desk.remove());
-
-            for (let row = 0; row < gridSize.rows; row++) {
-                for (let col = 0; col < gridSize.cols; col++) {
-                    const cell = document.createElement('div');
-                    cell.classList.add('cell', grid[row][col]);
-                    cell.dataset.row = row;
-                    cell.dataset.col = col;
-                    cell.addEventListener('click', handleCellClick);
-                    gridElement.appendChild(cell);
-                }
-            }
-
-            // Add desk images on top of desk cells
-            addDeskContainers();
-
-            updateGridDisplay();
         }
 
         // Function to add desk containers
@@ -597,6 +613,31 @@
                 
                 document.body.appendChild(deskContainer);
             });
+        }
+
+        function renderGrid() {
+            const gridElement = document.getElementById('grid');
+            gridElement.style.gridTemplateColumns = `repeat(${gridSize.cols}, 30px)`;
+            gridElement.innerHTML = '';
+
+            // Remove any existing desk containers
+            document.querySelectorAll('.desk-container').forEach(desk => desk.remove());
+
+            for (let row = 0; row < gridSize.rows; row++) {
+                for (let col = 0; col < gridSize.cols; col++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell', grid[row][col]);
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    cell.addEventListener('click', handleCellClick);
+                    gridElement.appendChild(cell);
+                }
+            }
+
+            // Add desk images on top of desk cells
+            addDeskContainers();
+
+            updateGridDisplay();
         }
 
         function updateLivesDisplay() {
