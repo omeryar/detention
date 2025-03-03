@@ -200,21 +200,21 @@
             transform: translate(-50%, -50%);
         }
         .note {
-            background-color: #2196F3;
-            color: white;
             position: relative;
             z-index: 100;
+            background-image: url('note.png');
+            background-size: 150% 150%;
+            background-position: center;
+            background-repeat: no-repeat;
         }
         .floating-note {
             position: absolute;
             width: 30px;
             height: 30px;
-            background-color: #2196F3;
-            color: white;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-weight: bold;
+            background-image: url('note.png');
+            background-size: 150% 150%;
+            background-position: center;
+            background-repeat: no-repeat;
             z-index: 100;
             transition: all 1s ease;
             border-radius: 3px;
@@ -554,7 +554,6 @@
                 // Add note
                 if (notePosition.row === row && notePosition.col === col) {
                     cell.classList.add('note');
-                    cell.textContent = 'N';
                 }
             });
         }
@@ -579,6 +578,14 @@
             }
 
             // Add desk images on top of desk cells
+            addDeskContainers();
+
+            updateGridDisplay();
+        }
+
+        // Function to add desk containers
+        function addDeskContainers() {
+            const gridElement = document.getElementById('grid');
             const deskPositions = [
                 {row: 1, col: 1}, {row: 1, col: 5}, {row: 1, col: 9},
                 {row: 4, col: 1}, {row: 4, col: 5}, {row: 4, col: 9},
@@ -617,8 +624,6 @@
                 
                 document.body.appendChild(deskContainer);
             });
-
-            updateGridDisplay();
         }
 
         function updateLivesDisplay() {
@@ -735,7 +740,6 @@
             
             floatingNote = document.createElement('div');
             floatingNote.className = 'floating-note';
-            floatingNote.textContent = 'N';
             
             // Position the floating note exactly over the original note cell
             floatingNote.style.position = 'absolute';
@@ -1006,6 +1010,15 @@
 
         document.getElementById('new-game').addEventListener('click', startNewGame);
 
+        // Set up event listener for window resize
+        window.addEventListener('resize', function() {
+            // Remove existing desk containers
+            document.querySelectorAll('.desk-container').forEach(desk => desk.remove());
+            
+            // Add new desk containers with updated positions
+            addDeskContainers();
+        });
+        
         // Start the game
         startNewGame();
     </script>
