@@ -312,6 +312,90 @@
             return { start, end };
         }
 
+        function findClosestRoad(point) {
+            // Search in expanding circles for the nearest road
+            for (let distance = 1; distance < 5; distance++) {
+                for (let dr = -distance; dr <= distance; dr++) {
+                    for (let dc = -distance; dc <= distance; dc++) {
+                        if (Math.abs(dr) + Math.abs(dc) === distance) {
+                            const r = point.row + dr;
+                            const c = point.col + dc;
+                            
+                            if (
+                                r >= 0 && r < gridSize.rows &&
+                                c >= 0 && c < gridSize.cols &&
+                                grid[r][c] === SQUARE_TYPES.ROAD
+                            ) {
+                                return { row: r, col: c };
+                            }
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        function createDirectPath(start, end) {
+            // This is a last resort function that creates a direct path between start and end
+            // by finding the closest road cells to each
+            const path = [{ row: start.row, col: start.col }];
+            
+            // Find closest road cell to start
+            const startRoad = findClosestRoad(start);
+            if (startRoad) path.push(startRoad);
+            
+            // Find closest road cell to end
+            const endRoad = findClosestRoad(end);
+            if (endRoad && startRoad && (startRoad.row !== endRoad.row || startRoad.col !== endRoad.col)) {
+                path.push(endRoad);
+            }
+            
+            path.push({ row: end.row, col: end.col });
+            return path;
+        }
+
+        function generatePathBFS(start, end) {
+            const directions = [
+                { row: -1, col: 0 },
+                { row: 1, col: 0 },
+                { row: 0, col: -1 },
+                { row: 0, col: 1 }
+            ];
+            
+            const queue = [{ row: start.row, col: start.col, path: [{ row: start.row, col: start.col }] }];
+            const visited = new Set([`${start.row},${start.col}`]);
+            
+            while (queue.length > 0) {
+                const { row, col, path } = queue.shift();
+                
+                if (row === end.row && col === end.col) {
+                    return path;
+                }
+                
+                for (const dir of directions) {
+                    const newRow = row + dir.row;
+                    const newCol = col + dir.col;
+                    const key = `${newRow},${newCol}`;
+                    
+                    if (
+                        newRow >= 0 &&
+                        newRow < gridSize.rows &&
+                        newCol >= 0 &&
+                        newCol < gridSize.cols &&
+                        (grid[newRow][newCol] === SQUARE_TYPES.ROAD || (newRow === end.row && newCol === end.col)) &&
+                        !visited.has(key)
+                    ) {
+                        visited.add(key);
+                        const newPath = [...path, { row: newRow, col: newCol }];
+                        queue.push({ row: newRow, col: newCol, path: newPath });
+                    }
+                }
+            }
+            
+            // If still no path found, create a direct path by finding roads near start and end
+            return createDirectPath(start, end);
+        }
+
         function generatePath(start, end) {
             const directions = [
                 { row: -1, col: 0 },
@@ -359,26 +443,13 @@
             }
 
             dfs(start.row, start.col);
-            return path;
-        }
-
-        function renderGrid() {
-            const gridElement = document.getElementById('grid');
-            gridElement.style.gridTemplateColumns = `repeat(${gridSize.cols}, 30px)`;
-            gridElement.innerHTML = '';
-
-            for (let row = 0; row < gridSize.rows; row++) {
-                for (let col = 0; col < gridSize.cols; col++) {
-                    const cell = document.createElement('div');
-                    cell.classList.add('cell', grid[row][col]);
-                    cell.dataset.row = row;
-                    cell.dataset.col = col;
-                    cell.addEventListener('click', handleCellClick);
-                    gridElement.appendChild(cell);
-                }
+            
+            // If no path is found or path is too short, try with BFS as a fallback
+            if (path.length <= 1) {
+                return generatePathBFS(start, end);
             }
-
-            updateGridDisplay();
+            
+            return path;
         }
 
         function updateGridDisplay() {
@@ -417,6 +488,25 @@
             });
         }
 
+        function renderGrid() {
+            const gridElement = document.getElementById('grid');
+            gridElement.style.gridTemplateColumns = `repeat(${gridSize.cols}, 30px)`;
+            gridElement.innerHTML = '';
+
+            for (let row = 0; row < gridSize.rows; row++) {
+                for (let col = 0; col < gridSize.cols; col++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell', grid[row][col]);
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    cell.addEventListener('click', handleCellClick);
+                    gridElement.appendChild(cell);
+                }
+            }
+
+            updateGridDisplay();
+        }
+
         function updateLivesDisplay() {
             for (let i = 1; i <= 3; i++) {
                 const lifeElement = document.getElementById(`life-${i}`);
@@ -426,6 +516,12 @@
                     lifeElement.classList.add('lost');
                 }
             }
+        }
+
+        function isValidMove(position) {
+            const currentIndex = path.findIndex(p => p.row === notePosition.row && p.col === notePosition.col);
+            const clickedIndex = path.findIndex(p => p.row === position.row && p.col === position.col);
+            return Math.abs(clickedIndex - currentIndex) === 1;
         }
 
         function handleCellClick(event) {
@@ -445,12 +541,6 @@
                 updateGridDisplay();
                 checkWinCondition();
             }
-        }
-
-        function isValidMove(position) {
-            const currentIndex = path.findIndex(p => p.row === notePosition.row && p.col === notePosition.col);
-            const clickedIndex = path.findIndex(p => p.row === position.row && p.col === position.col);
-            return Math.abs(clickedIndex - currentIndex) === 1;
         }
 
         function moveNote(direction) {
@@ -574,10 +664,29 @@
                 
                 // Select new random desks for the next path
                 const desks = getDesks();
-                ({ start: startDesk, end: endDesk } = selectRandomDesks(desks));
+                let validPathFound = false;
+                let attempts = 0;
                 
-                // Generate a new path between the new desks
-                path = generatePath(startDesk, endDesk);
+                // Keep trying until we get a valid path
+                while (!validPathFound && attempts < 10) {
+                    attempts++;
+                    ({ start: startDesk, end: endDesk } = selectRandomDesks(desks));
+                    path = generatePath(startDesk, endDesk);
+                    
+                    // Check if we have a valid path
+                    if (path && path.length > 1) {
+                        validPathFound = true;
+                    }
+                }
+                
+                // If we still don't have a valid path after 10 attempts,
+                // generate a more direct path between any two desks
+                if (!validPathFound) {
+                    console.log("Failed to find valid path after multiple attempts, creating direct path");
+                    ({ start: startDesk, end: endDesk } = selectRandomDesks(desks));
+                    path = createDirectPath(startDesk, endDesk);
+                }
+                
                 notePosition = { ...startDesk };
                 
                 // Completely re-render the grid to ensure the path is updated
@@ -589,16 +698,75 @@
 
         function checkWinCondition() {
             if (notePosition.row === endDesk.row && notePosition.col === endDesk.col) {
+                isAnimating = true; // Prevent further moves during transition
                 document.getElementById('message').textContent = 'Congratulations! Your note reached the destination!';
-                stopGame();
+                
+                // Wait a moment before generating a new path
+                setTimeout(() => {
+                    // Select new random desks for the next path
+                    const desks = getDesks();
+                    let validPathFound = false;
+                    let attempts = 0;
+                    
+                    // Keep trying until we get a valid path
+                    while (!validPathFound && attempts < 10) {
+                        attempts++;
+                        ({ start: startDesk, end: endDesk } = selectRandomDesks(desks));
+                        path = generatePath(startDesk, endDesk);
+                        
+                        // Check if we have a valid path
+                        if (path && path.length > 1) {
+                            validPathFound = true;
+                        }
+                    }
+                    
+                    // If we still don't have a valid path after 10 attempts,
+                    // generate a more direct path between any two desks
+                    if (!validPathFound) {
+                        console.log("Failed to find valid path after multiple attempts, creating direct path");
+                        ({ start: startDesk, end: endDesk } = selectRandomDesks(desks));
+                        path = createDirectPath(startDesk, endDesk);
+                    }
+                    
+                    notePosition = { ...startDesk };
+                    
+                    // Update the message
+                    document.getElementById('message').textContent = 'New note to pass! Keep going!';
+                    
+                    // Completely re-render the grid to ensure the path is updated
+                    renderGrid();
+                    
+                    isAnimating = false;
+                }, 2000); // Wait 2 seconds before generating new path
             }
         }
 
         function startNewGame() {
             initializeGrid();
             const desks = getDesks();
-            ({ start: startDesk, end: endDesk } = selectRandomDesks(desks));
-            path = generatePath(startDesk, endDesk);
+            let validPathFound = false;
+            let attempts = 0;
+            
+            // Keep trying until we get a valid path
+            while (!validPathFound && attempts < 10) {
+                attempts++;
+                ({ start: startDesk, end: endDesk } = selectRandomDesks(desks));
+                path = generatePath(startDesk, endDesk);
+                
+                // Check if we have a valid path
+                if (path && path.length > 1) {
+                    validPathFound = true;
+                }
+            }
+            
+            // If we still don't have a valid path after 10 attempts,
+            // generate a more direct path between any two desks
+            if (!validPathFound) {
+                console.log("Failed to find valid path after multiple attempts, creating direct path");
+                ({ start: startDesk, end: endDesk } = selectRandomDesks(desks));
+                path = createDirectPath(startDesk, endDesk);
+            }
+            
             notePosition = { ...startDesk };
             renderGrid();
             document.getElementById('message').textContent = '';
