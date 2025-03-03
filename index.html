@@ -707,6 +707,7 @@
         
         // Set up keyboard event listeners
         document.addEventListener('keydown', (event) => {
+            event.preventDefault();
             if (event.key === 'ArrowUp') {
                 moveNote('up');
             } else if (event.key === 'ArrowDown') {
