@@ -1,0 +1,9 @@
+- Help build this project step by step using the supplied prompts. Scope your changes to do what the prompts asks, no more and no less.
+- When fixing or modifying existing code, please make your changes to the code as minimal as possible. Don't change anything that isn't directly related to this task, even comments. And make sure you don't remove necessary code, comments or imports.
+- Write your code to match the formatting and style of the existing code as much as possible.
+- Try to make your code readable and easy to understand, as well as testable and maintainable.
+- Do not delete any file without prior confirmation.
+- Always ask me to approve changes to files.
+- Use vanilla JS, not typescript
+- Don't try to run terminal commands. Just tell me what they are and I'll run them
+- If you want to make multiple edits to the same file, make them all at once, and not in multiple calls.

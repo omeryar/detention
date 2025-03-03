@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Island Path Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #game-container {
+            text-align: center;
+        }
+        #grid {
+            display: inline-grid;
+            gap: 2px;
+            background-color: #ccc;
+            padding: 2px;
+            border: 2px solid #999;
+        }
+        .cell {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .road {
+            background-color: #fff;
+        }
+        .island {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .path {
+            background-color: #FFC107;
+        }
+        .player {
+            background-color: #2196F3;
+            color: white;
+        }
+        #message {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #controls {
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(3, 40px);
+            grid-template-rows: repeat(3, 40px);
+            gap: 5px;
+            justify-content: center;
+        }
+        .arrow-btn {
+            background-color: #ddd;
+            border: 1px solid #999;
+            font-size: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+        .arrow-btn:hover {
+            background-color: #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="grid"></div>
+        <div id="controls">
+            <div></div>
+            <div class="arrow-btn" id="up-btn">↑</div>
+            <div></div>
+            <div class="arrow-btn" id="left-btn">←</div>
+            <div></div>
+            <div class="arrow-btn" id="right-btn">→</div>
+            <div></div>
+            <div class="arrow-btn" id="down-btn">↓</div>
+            <div></div>
+        </div>
+        <div id="message"></div>
+        <button id="new-game">New Game</button>
+    </div>
+
+    <script>
+        const SQUARE_TYPES = {
+            ROAD: 'road',
+            ISLAND: 'island'
+        };
+
+        let grid, path, playerPosition, startIsland, endIsland;
+        const gridSize = { rows: 13, cols: 13 };
+        const islandSize = { width: 3, height: 2 };
+        const numIslands = 12;
+
+        function initializeGrid() {
+            grid = Array(gridSize.rows).fill().map(() => Array(gridSize.cols).fill(SQUARE_TYPES.ROAD));
+            placeIslands();
+        }
+
+        function placeIslands() {
+            const islandPositions = [
+                {row: 1, col: 1}, {row: 1, col: 5}, {row: 1, col: 9},
+                {row: 4, col: 1}, {row: 4, col: 5}, {row: 4, col: 9},
+                {row: 7, col: 1}, {row: 7, col: 5}, {row: 7, col: 9},
+                {row: 10, col: 1}, {row: 10, col: 5}, {row: 10, col: 9},
+            ];
+
+            islandPositions.forEach(pos => {
+                for (let r = 0; r < islandSize.height; r++) {
+                    for (let c = 0; c < islandSize.width; c++) {
+                        grid[pos.row + r][pos.col + c] = SQUARE_TYPES.ISLAND;
+                    }
+                }
+            });
+        }
+
+        function getIslands() {
+            const islands = [];
+            for (let row = 0; row < gridSize.rows; row++) {
+                for (let col = 0; col < gridSize.cols; col++) {
+                    if (grid[row][col] === SQUARE_TYPES.ISLAND) {
+                        islands.push({ row, col });
+                    }
+                }
+            }
+            return islands;
+        }
+
+        function selectRandomIslands(islands) {
+            let start, end;
+            do {
+                start = islands[Math.floor(Math.random() * islands.length)];
+                end = islands[Math.floor(Math.random() * islands.length)];
+            } while (
+                start.row === end.row && start.col === end.col ||
+                Math.abs(start.row - end.row) <= 2 && Math.abs(start.col - end.col) <= 2
+            );
+            return { start, end };
+        }
+
+        function generatePath(start, end) {
+            const directions = [
+                { row: -1, col: 0 },
+                { row: 1, col: 0 },
+                { row: 0, col: -1 },
+                { row: 0, col: 1 }
+            ];
+
+            function isValidMove(row, col) {
+                return (
+                    row >= 0 &&
+                    row < gridSize.rows &&
+                    col >= 0 &&
+                    col < gridSize.cols &&
+                    (grid[row][col] === SQUARE_TYPES.ROAD || (row === end.row && col === end.col)) &&
+                    !visited.has(`${row},${col}`)
+                );
+            }
+
+            const visited = new Set();
+            const path = [];
+
+            function dfs(row, col) {
+                if (row === end.row && col === end.col) {
+                    path.push({ row, col });
+                    return true;
+                }
+
+                visited.add(`${row},${col}`);
+                path.push({ row, col });
+
+                const shuffledDirections = directions.sort(() => Math.random() - 0.5);
+
+                for (const dir of shuffledDirections) {
+                    const newRow = row + dir.row;
+                    const newCol = col + dir.col;
+
+                    if (isValidMove(newRow, newCol)) {
+                        if (dfs(newRow, newCol)) return true;
+                    }
+                }
+
+                path.pop();
+                return false;
+            }
+
+            dfs(start.row, start.col);
+            return path;
+        }
+
+        function renderGrid() {
+            const gridElement = document.getElementById('grid');
+            gridElement.style.gridTemplateColumns = `repeat(${gridSize.cols}, 30px)`;
+            gridElement.innerHTML = '';
+
+            for (let row = 0; row < gridSize.rows; row++) {
+                for (let col = 0; col < gridSize.cols; col++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell', grid[row][col]);
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    cell.addEventListener('click', handleCellClick);
+                    gridElement.appendChild(cell);
+                }
+            }
+
+            updateGridDisplay();
+        }
+
+        function updateGridDisplay() {
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach(cell => {
+                const row = parseInt(cell.dataset.row);
+                const col = parseInt(cell.dataset.col);
+                cell.classList.remove('path', 'player');
+                cell.textContent = '';
+
+                if (row === startIsland.row && col === startIsland.col) {
+                    cell.textContent = 'S';
+                } else if (row === endIsland.row && col === endIsland.col) {
+                    cell.textContent = 'E';
+                }
+
+                if (path.some(p => p.row === row && p.col === col)) {
+                    cell.classList.add('path');
+                }
+
+                if (playerPosition.row === row && playerPosition.col === col) {
+                    cell.classList.add('player');
+                    cell.textContent = 'P';
+                }
+            });
+        }
+
+        function handleCellClick(event) {
+            const row = parseInt(event.target.dataset.row);
+            const col = parseInt(event.target.dataset.col);
+            const clickedPosition = { row, col };
+
+            if (isValidMove(clickedPosition)) {
+                playerPosition = clickedPosition;
+                updateGridDisplay();
+                checkWinCondition();
+            }
+        }
+
+        function isValidMove(position) {
+            const currentIndex = path.findIndex(p => p.row === playerPosition.row && p.col === playerPosition.col);
+            const clickedIndex = path.findIndex(p => p.row === position.row && p.col === position.col);
+            return Math.abs(clickedIndex - currentIndex) === 1;
+        }
+
+        function movePlayer(direction) {
+            const currentIndex = path.findIndex(p => p.row === playerPosition.row && p.col === playerPosition.col);
+            
+            if (currentIndex === -1) return; // Player not on path
+            
+            let nextPosition = null;
+            
+            // Try to find a valid move in the specified direction
+            if (direction === 'up') {
+                // Look for a position above the current one
+                const possiblePosition = path.find(p => 
+                    p.row === playerPosition.row - 1 && 
+                    p.col === playerPosition.col
+                );
+                if (possiblePosition && isValidMove(possiblePosition)) {
+                    nextPosition = possiblePosition;
+                }
+            } else if (direction === 'down') {
+                // Look for a position below the current one
+                const possiblePosition = path.find(p => 
+                    p.row === playerPosition.row + 1 && 
+                    p.col === playerPosition.col
+                );
+                if (possiblePosition && isValidMove(possiblePosition)) {
+                    nextPosition = possiblePosition;
+                }
+            } else if (direction === 'left') {
+                // Look for a position to the left of the current one
+                const possiblePosition = path.find(p => 
+                    p.row === playerPosition.row && 
+                    p.col === playerPosition.col - 1
+                );
+                if (possiblePosition && isValidMove(possiblePosition)) {
+                    nextPosition = possiblePosition;
+                }
+            } else if (direction === 'right') {
+                // Look for a position to the right of the current one
+                const possiblePosition = path.find(p => 
+                    p.row === playerPosition.row && 
+                    p.col === playerPosition.col + 1
+                );
+                if (possiblePosition && isValidMove(possiblePosition)) {
+                    nextPosition = possiblePosition;
+                }
+            }
+            
+            // If we found a valid next position, move the player there
+            if (nextPosition) {
+                playerPosition = nextPosition;
+                updateGridDisplay();
+                checkWinCondition();
+            }
+        }
+
+        function checkWinCondition() {
+            if (playerPosition.row === endIsland.row && playerPosition.col === endIsland.col) {
+                document.getElementById('message').textContent = 'Congratulations! You reached the end island!';
+            }
+        }
+
+        function startNewGame() {
+            initializeGrid();
+            const islands = getIslands();
+            ({ start: startIsland, end: endIsland } = selectRandomIslands(islands));
+            path = generatePath(startIsland, endIsland);
+            playerPosition = { ...startIsland };
+            renderGrid();
+            document.getElementById('message').textContent = '';
+        }
+
+        // Set up event listeners for arrow buttons
+        document.getElementById('up-btn').addEventListener('click', () => movePlayer('up'));
+        document.getElementById('down-btn').addEventListener('click', () => movePlayer('down'));
+        document.getElementById('left-btn').addEventListener('click', () => movePlayer('left'));
+        document.getElementById('right-btn').addEventListener('click', () => movePlayer('right'));
+        
+        // Set up keyboard event listeners
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'ArrowUp') {
+                movePlayer('up');
+            } else if (event.key === 'ArrowDown') {
+                movePlayer('down');
+            } else if (event.key === 'ArrowLeft') {
+                movePlayer('left');
+            } else if (event.key === 'ArrowRight') {
+                movePlayer('right');
+            }
+        });
+
+        document.getElementById('new-game').addEventListener('click', startNewGame);
+
+        // Start the game
+        startNewGame();
+    </script>
+</body>
+</html>
