@@ -697,94 +697,73 @@
         }
 
         function noteCaught() {
+            if (isAnimating) return;
             isAnimating = true;
-            document.getElementById('message').textContent = 'Note caught! Sliding to teacher...';
             
-            // Get the note element and teacher element
+            // Get the current note position and teacher position
             const noteCell = document.querySelector(`.cell[data-row="${notePosition.row}"][data-col="${notePosition.col}"]`);
             const teacherElement = document.getElementById('teacher');
             
-            // Remove the note class from the original cell but keep other classes
-            noteCell.classList.remove('note');
-            noteCell.textContent = '';
+            if (!noteCell || !teacherElement) {
+                isAnimating = false;
+                return;
+            }
             
-            // Create a floating note that will animate
-            const noteCellRect = noteCell.getBoundingClientRect();
+            // Remove the existing note element
+            const existingNote = document.querySelector('.note');
+            if (existingNote) {
+                existingNote.remove();
+            }
             
+            // Create floating note for animation
             floatingNote = document.createElement('div');
             floatingNote.className = 'floating-note';
             
             // Position the floating note exactly over the original note cell
             floatingNote.style.position = 'absolute';
-            floatingNote.style.left = noteCellRect.left + 'px';
-            floatingNote.style.top = noteCellRect.top + 'px';
-            
-            // Append to body for absolute positioning
+            const noteCellRect = noteCell.getBoundingClientRect();
+            floatingNote.style.left = `${noteCellRect.left}px`;
+            floatingNote.style.top = `${noteCellRect.top}px`;
             document.body.appendChild(floatingNote);
             
-            // Calculate position for animation
+            // Get teacher's position for animation
             const teacherRect = teacherElement.getBoundingClientRect();
+            const teacherCenter = {
+                x: teacherRect.left + teacherRect.width / 2,
+                y: teacherRect.top + teacherRect.height / 2
+            };
             
-            // Calculate the translation needed to move the note to the teacher
-            const translateX = (teacherRect.left - noteCellRect.left) + (teacherRect.width / 2) - (noteCellRect.width / 2);
-            const translateY = (teacherRect.top - noteCellRect.top) + (teacherRect.height / 2) - (noteCellRect.height / 2);
-            
-            // Apply the translation after a small delay to ensure proper rendering
+            // Animate the note moving to the teacher
             setTimeout(() => {
-                floatingNote.style.transform = `translate(${translateX}px, ${translateY}px) scale(0.5)`;
-            }, 10);
+                floatingNote.style.left = `${teacherCenter.x - floatingNote.offsetWidth / 2}px`;
+                floatingNote.style.top = `${teacherCenter.y - floatingNote.offsetHeight / 2}px`;
+                floatingNote.style.transform = 'scale(0.1)';
+                floatingNote.style.opacity = '0';
+            }, 50);
             
-            // After animation completes, reduce life and reset
+            // Remove the floating note after animation
             setTimeout(() => {
                 if (floatingNote) {
                     floatingNote.remove();
                     floatingNote = null;
                 }
-                
-                playerLives--;
-                updateLivesDisplay();
-                
-                if (playerLives <= 0) {
-                    document.getElementById('message').textContent = 'Game over! You ran out of lives.';
-                    stopGame();
-                    isAnimating = false;
-                    return;
-                }
-                
-                document.getElementById('message').textContent = `Note caught! ${playerLives} lives remaining.`;
-                
-                // Select new random desks for the next path
-                const desks = getDesks();
-                let validPathFound = false;
-                let attempts = 0;
-                
-                // Keep trying until we get a valid path
-                while (!validPathFound && attempts < 10) {
-                    attempts++;
-                    ({ start: startDesk, end: endDesk } = selectRandomDesks(desks));
-                    path = generatePath(startDesk, endDesk);
-                    
-                    // Check if we have a valid path
-                    if (path && path.length > 1) {
-                        validPathFound = true;
-                    }
-                }
-                
-                // If we still don't have a valid path after 10 attempts,
-                // generate a more direct path between any two desks
-                if (!validPathFound) {
-                    console.log("Failed to find valid path after multiple attempts, creating direct path");
-                    ({ start: startDesk, end: endDesk } = selectRandomDesks(desks));
-                    path = createDirectPath(startDesk, endDesk);
-                }
-                
-                notePosition = { ...startDesk };
-                
-                // Completely re-render the grid to ensure the path is updated
-                renderGrid();
-                
                 isAnimating = false;
-            }, 1500); // Wait for animation to complete
+            }, 1000);
+            
+            // Reduce player lives
+            playerLives--;
+            updateLivesDisplay();
+            
+            // Reset note position
+            notePosition = { ...startDesk };
+            
+            // Check if game is over
+            if (playerLives <= 0) {
+                setTimeout(() => {
+                    alert('Game Over! The teacher caught you too many times!');
+                    startNewGame();
+                }, 1000);
+            }
         }
 
         function checkWinCondition() {
