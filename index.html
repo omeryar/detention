@@ -156,10 +156,20 @@
             border-radius: 3px;
         }
         .road {
+          background-color: none;
         }
         .desk {
-            background-color: #4CAF50;
+            background-color: none;
             color: white;
+        }
+        .desk-container {
+            position: absolute;
+            background-image: url('student.png');
+            background-size: 300% 300%;
+            background-position: center;
+            background-repeat: no-repeat;
+            z-index: 5;
+            transform: translate(-10px, 2px);
         }
         .path {
             position: relative;
@@ -179,7 +189,7 @@
             background-color: #2196F3;
             color: white;
             position: relative;
-            z-index: 10;
+            z-index: 100;
         }
         .floating-note {
             position: absolute;
@@ -241,6 +251,7 @@
         .arrow-btn:hover {
             background-color: #ccc;
         }
+
     </style>
 </head>
 <body>
@@ -536,6 +547,9 @@
             gridElement.style.gridTemplateColumns = `repeat(${gridSize.cols}, 30px)`;
             gridElement.innerHTML = '';
 
+            // Remove any existing desk containers
+            document.querySelectorAll('.desk-container').forEach(desk => desk.remove());
+
             for (let row = 0; row < gridSize.rows; row++) {
                 for (let col = 0; col < gridSize.cols; col++) {
                     const cell = document.createElement('div');
@@ -546,6 +560,36 @@
                     gridElement.appendChild(cell);
                 }
             }
+
+            // Add desk images on top of desk cells
+            const deskPositions = [
+                {row: 1, col: 1}, {row: 1, col: 5}, {row: 1, col: 9},
+                {row: 4, col: 1}, {row: 4, col: 5}, {row: 4, col: 9},
+                {row: 7, col: 1}, {row: 7, col: 5}, {row: 7, col: 9},
+                {row: 10, col: 1}, {row: 10, col: 5}, {row: 10, col: 9},
+            ];
+
+            const gridRect = gridElement.getBoundingClientRect();
+            
+            deskPositions.forEach(pos => {
+                // Get the top-left cell of this desk
+                const topLeftCell = document.querySelector(`.cell[data-row="${pos.row}"][data-col="${pos.col}"]`);
+                if (!topLeftCell) return;
+                
+                const cellRect = topLeftCell.getBoundingClientRect();
+                
+                // Create a desk container that will hold the image
+                const deskContainer = document.createElement('div');
+                deskContainer.className = 'desk-container';
+                
+                // Position and size the desk container to cover exactly 3x2 cells
+                deskContainer.style.width = `${deskSize.width * (cellRect.width + 2)}px`; // +2 for the gap
+                deskContainer.style.height = `${deskSize.height * (cellRect.height + 2)}px`; // +2 for the gap
+                deskContainer.style.left = `${cellRect.left}px`;
+                deskContainer.style.top = `${cellRect.top}px`;
+                
+                document.body.appendChild(deskContainer);
+            });
 
             updateGridDisplay();
         }
