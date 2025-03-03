@@ -599,6 +599,16 @@
                 const deskContainer = document.createElement('div');
                 deskContainer.className = 'desk-container';
                 
+                // Apply random transformations to make each student unique
+                const hueRotate = Math.floor(Math.random() * 360); // Random hue rotation (0-359 degrees)
+                const saturate = 0.8 + Math.random() * 0.6; // Random saturation (0.8-1.4)
+                const brightness = 0.8 + Math.random() * 0.4; // Random brightness (0.8-1.2)
+                const contrast = 0.9 + Math.random() * 0.4; // Random contrast (0.9-1.3)
+                
+                // Apply the random styles
+                deskContainer.style.filter = `hue-rotate(${hueRotate}deg) saturate(${saturate}) brightness(${brightness}) contrast(${contrast})`;
+                deskContainer.style.transform = `translate(-10px, 2px)`;
+                
                 // Position and size the desk container to cover exactly 3x2 cells
                 deskContainer.style.width = `${deskSize.width * (cellRect.width + 2)}px`; // +2 for the gap
                 deskContainer.style.height = `${deskSize.height * (cellRect.height + 2)}px`; // +2 for the gap
