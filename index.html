@@ -97,6 +97,22 @@
             font-size: 14px;
             color: #333;
         }
+        #lives-container {
+            margin-top: 10px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        .life {
+            width: 20px;
+            height: 20px;
+            background-color: #F44336;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .life.lost {
+            background-color: #ccc;
+        }
         #grid {
             display: inline-grid;
             gap: 2px;
@@ -116,7 +132,7 @@
         .road {
             background-color: #fff;
         }
-        .island {
+        .desk {
             background-color: #4CAF50;
             color: white;
         }
@@ -134,9 +150,15 @@
             left: 50%;
             transform: translate(-50%, -50%);
         }
-        .player {
+        .note {
             background-color: #2196F3;
             color: white;
+            position: relative;
+            z-index: 10;
+        }
+        .note.caught {
+            transition: all 1s ease;
+            transform: scale(0.5);
         }
         #message {
             margin-top: 20px;
@@ -182,6 +204,11 @@
             </div>
             <div id="teacher-status">Safe to move</div>
         </div>
+        <div id="lives-container">
+            <div class="life" id="life-1"></div>
+            <div class="life" id="life-2"></div>
+            <div class="life" id="life-3"></div>
+        </div>
         <div id="grid"></div>
         <div id="controls">
             <div></div>
@@ -201,7 +228,7 @@
     <script>
         const SQUARE_TYPES = {
             ROAD: 'road',
-            ISLAND: 'island'
+            DESK: 'desk'
         };
 
         const TEACHER_STATES = {
@@ -210,10 +237,13 @@
             FACING_CLASS: 'facing-class'
         };
 
-        let grid, path, playerPosition, startIsland, endIsland;
+        let grid, path, notePosition, startDesk, endDesk;
         const gridSize = { rows: 13, cols: 13 };
-        const islandSize = { width: 3, height: 2 };
-        const numIslands = 12;
+        const deskSize = { width: 3, height: 2 };
+        const numDesks = 12;
+        
+        // Player lives
+        let playerLives = 3;
         
         // Teacher state variables
         let teacherState = TEACHER_STATES.FACING_BLACKBOARD;
@@ -221,46 +251,49 @@
         let difficultyLevel = 1;
         let gameTime = 0;
         let gameTimer;
+        
+        // Animation flag
+        let isAnimating = false;
 
         function initializeGrid() {
             grid = Array(gridSize.rows).fill().map(() => Array(gridSize.cols).fill(SQUARE_TYPES.ROAD));
-            placeIslands();
+            placeDesks();
         }
 
-        function placeIslands() {
-            const islandPositions = [
+        function placeDesks() {
+            const deskPositions = [
                 {row: 1, col: 1}, {row: 1, col: 5}, {row: 1, col: 9},
                 {row: 4, col: 1}, {row: 4, col: 5}, {row: 4, col: 9},
                 {row: 7, col: 1}, {row: 7, col: 5}, {row: 7, col: 9},
                 {row: 10, col: 1}, {row: 10, col: 5}, {row: 10, col: 9},
             ];
 
-            islandPositions.forEach(pos => {
-                for (let r = 0; r < islandSize.height; r++) {
-                    for (let c = 0; c < islandSize.width; c++) {
-                        grid[pos.row + r][pos.col + c] = SQUARE_TYPES.ISLAND;
+            deskPositions.forEach(pos => {
+                for (let r = 0; r < deskSize.height; r++) {
+                    for (let c = 0; c < deskSize.width; c++) {
+                        grid[pos.row + r][pos.col + c] = SQUARE_TYPES.DESK;
                     }
                 }
             });
         }
 
-        function getIslands() {
-            const islands = [];
+        function getDesks() {
+            const desks = [];
             for (let row = 0; row < gridSize.rows; row++) {
                 for (let col = 0; col < gridSize.cols; col++) {
-                    if (grid[row][col] === SQUARE_TYPES.ISLAND) {
-                        islands.push({ row, col });
+                    if (grid[row][col] === SQUARE_TYPES.DESK) {
+                        desks.push({ row, col });
                     }
                 }
             }
-            return islands;
+            return desks;
         }
 
-        function selectRandomIslands(islands) {
+        function selectRandomDesks(desks) {
             let start, end;
             do {
-                start = islands[Math.floor(Math.random() * islands.length)];
-                end = islands[Math.floor(Math.random() * islands.length)];
+                start = desks[Math.floor(Math.random() * desks.length)];
+                end = desks[Math.floor(Math.random() * desks.length)];
             } while (
                 start.row === end.row && start.col === end.col ||
                 Math.abs(start.row - end.row) <= 2 && Math.abs(start.col - end.col) <= 2
@@ -342,12 +375,12 @@
             cells.forEach(cell => {
                 const row = parseInt(cell.dataset.row);
                 const col = parseInt(cell.dataset.col);
-                cell.classList.remove('path', 'player');
+                cell.classList.remove('path', 'note', 'caught');
                 cell.textContent = '';
 
-                if (row === startIsland.row && col === startIsland.col) {
+                if (row === startDesk.row && col === startDesk.col) {
                     cell.textContent = 'S';
-                } else if (row === endIsland.row && col === endIsland.col) {
+                } else if (row === endDesk.row && col === endDesk.col) {
                     cell.textContent = 'E';
                 }
 
@@ -355,41 +388,55 @@
                     cell.classList.add('path');
                 }
 
-                if (playerPosition.row === row && playerPosition.col === col) {
-                    cell.classList.add('player');
-                    cell.textContent = 'P';
+                if (notePosition.row === row && notePosition.col === col) {
+                    cell.classList.add('note');
+                    cell.textContent = 'N';
                 }
             });
         }
 
+        function updateLivesDisplay() {
+            for (let i = 1; i <= 3; i++) {
+                const lifeElement = document.getElementById(`life-${i}`);
+                if (i <= playerLives) {
+                    lifeElement.classList.remove('lost');
+                } else {
+                    lifeElement.classList.add('lost');
+                }
+            }
+        }
+
         function handleCellClick(event) {
+            if (isAnimating) return; // Prevent clicks during animation
+            
             const row = parseInt(event.target.dataset.row);
             const col = parseInt(event.target.dataset.col);
             const clickedPosition = { row, col };
 
             if (isValidMove(clickedPosition)) {
                 if (teacherState === TEACHER_STATES.FACING_CLASS) {
-                    document.getElementById('message').textContent = 'Caught passing notes! Game over.';
-                    stopGame();
+                    noteCaught();
                     return;
                 }
                 
-                playerPosition = clickedPosition;
+                notePosition = clickedPosition;
                 updateGridDisplay();
                 checkWinCondition();
             }
         }
 
         function isValidMove(position) {
-            const currentIndex = path.findIndex(p => p.row === playerPosition.row && p.col === playerPosition.col);
+            const currentIndex = path.findIndex(p => p.row === notePosition.row && p.col === notePosition.col);
             const clickedIndex = path.findIndex(p => p.row === position.row && p.col === position.col);
             return Math.abs(clickedIndex - currentIndex) === 1;
         }
 
-        function movePlayer(direction) {
-            const currentIndex = path.findIndex(p => p.row === playerPosition.row && p.col === playerPosition.col);
+        function moveNote(direction) {
+            if (isAnimating) return; // Prevent movement during animation
             
-            if (currentIndex === -1) return; // Player not on path
+            const currentIndex = path.findIndex(p => p.row === notePosition.row && p.col === notePosition.col);
+            
+            if (currentIndex === -1) return; // Note not on path
             
             let nextPosition = null;
             
@@ -397,8 +444,8 @@
             if (direction === 'up') {
                 // Look for a position above the current one
                 const possiblePosition = path.find(p => 
-                    p.row === playerPosition.row - 1 && 
-                    p.col === playerPosition.col
+                    p.row === notePosition.row - 1 && 
+                    p.col === notePosition.col
                 );
                 if (possiblePosition && isValidMove(possiblePosition)) {
                     nextPosition = possiblePosition;
@@ -406,8 +453,8 @@
             } else if (direction === 'down') {
                 // Look for a position below the current one
                 const possiblePosition = path.find(p => 
-                    p.row === playerPosition.row + 1 && 
-                    p.col === playerPosition.col
+                    p.row === notePosition.row + 1 && 
+                    p.col === notePosition.col
                 );
                 if (possiblePosition && isValidMove(possiblePosition)) {
                     nextPosition = possiblePosition;
@@ -415,8 +462,8 @@
             } else if (direction === 'left') {
                 // Look for a position to the left of the current one
                 const possiblePosition = path.find(p => 
-                    p.row === playerPosition.row && 
-                    p.col === playerPosition.col - 1
+                    p.row === notePosition.row && 
+                    p.col === notePosition.col - 1
                 );
                 if (possiblePosition && isValidMove(possiblePosition)) {
                     nextPosition = possiblePosition;
@@ -424,43 +471,93 @@
             } else if (direction === 'right') {
                 // Look for a position to the right of the current one
                 const possiblePosition = path.find(p => 
-                    p.row === playerPosition.row && 
-                    p.col === playerPosition.col + 1
+                    p.row === notePosition.row && 
+                    p.col === notePosition.col + 1
                 );
                 if (possiblePosition && isValidMove(possiblePosition)) {
                     nextPosition = possiblePosition;
                 }
             }
             
-            // If we found a valid next position, move the player there
+            // If we found a valid next position, move the note there
             if (nextPosition) {
                 if (teacherState === TEACHER_STATES.FACING_CLASS) {
-                    document.getElementById('message').textContent = 'Caught passing notes! Game over.';
-                    stopGame();
+                    noteCaught();
                     return;
                 }
                 
-                playerPosition = nextPosition;
+                notePosition = nextPosition;
                 updateGridDisplay();
                 checkWinCondition();
             }
         }
 
+        function noteCaught() {
+            isAnimating = true;
+            document.getElementById('message').textContent = 'Note caught! Sliding to teacher...';
+            
+            // Get the note element and teacher element
+            const noteCell = document.querySelector(`.cell[data-row="${notePosition.row}"][data-col="${notePosition.col}"]`);
+            const teacherElement = document.getElementById('teacher');
+            
+            // Add caught class to start animation
+            noteCell.classList.add('caught');
+            
+            // Calculate position for animation
+            const noteCellRect = noteCell.getBoundingClientRect();
+            const teacherRect = teacherElement.getBoundingClientRect();
+            
+            // Calculate the translation needed to move the note to the teacher
+            const translateX = teacherRect.left - noteCellRect.left + (teacherRect.width / 2) - (noteCellRect.width / 2);
+            const translateY = teacherRect.top - noteCellRect.top + (teacherRect.height / 2) - (noteCellRect.height / 2);
+            
+            // Apply the translation
+            noteCell.style.transform = `translate(${translateX}px, ${translateY}px) scale(0.5)`;
+            
+            // After animation completes, reduce life and reset
+            setTimeout(() => {
+                playerLives--;
+                updateLivesDisplay();
+                
+                if (playerLives <= 0) {
+                    document.getElementById('message').textContent = 'Game over! You ran out of lives.';
+                    stopGame();
+                    isAnimating = false;
+                    return;
+                }
+                
+                document.getElementById('message').textContent = `Note caught! ${playerLives} lives remaining.`;
+                
+                // Generate a new path but keep the same start and end desks
+                path = generatePath(startDesk, endDesk);
+                notePosition = { ...startDesk };
+                updateGridDisplay();
+                isAnimating = false;
+            }, 1500); // Wait for animation to complete
+        }
+
         function checkWinCondition() {
-            if (playerPosition.row === endIsland.row && playerPosition.col === endIsland.col) {
-                document.getElementById('message').textContent = 'Congratulations! You reached the end island!';
+            if (notePosition.row === endDesk.row && notePosition.col === endDesk.col) {
+                document.getElementById('message').textContent = 'Congratulations! Your note reached the destination!';
                 stopGame();
             }
         }
 
         function startNewGame() {
             initializeGrid();
-            const islands = getIslands();
-            ({ start: startIsland, end: endIsland } = selectRandomIslands(islands));
-            path = generatePath(startIsland, endIsland);
-            playerPosition = { ...startIsland };
+            const desks = getDesks();
+            ({ start: startDesk, end: endDesk } = selectRandomDesks(desks));
+            path = generatePath(startDesk, endDesk);
+            notePosition = { ...startDesk };
             renderGrid();
             document.getElementById('message').textContent = '';
+            
+            // Reset animation flag
+            isAnimating = false;
+            
+            // Reset player lives
+            playerLives = 3;
+            updateLivesDisplay();
             
             // Reset teacher and game state
             difficultyLevel = 1;
@@ -546,21 +643,21 @@
         }
 
         // Set up event listeners for arrow buttons
-        document.getElementById('up-btn').addEventListener('click', () => movePlayer('up'));
-        document.getElementById('down-btn').addEventListener('click', () => movePlayer('down'));
-        document.getElementById('left-btn').addEventListener('click', () => movePlayer('left'));
-        document.getElementById('right-btn').addEventListener('click', () => movePlayer('right'));
+        document.getElementById('up-btn').addEventListener('click', () => moveNote('up'));
+        document.getElementById('down-btn').addEventListener('click', () => moveNote('down'));
+        document.getElementById('left-btn').addEventListener('click', () => moveNote('left'));
+        document.getElementById('right-btn').addEventListener('click', () => moveNote('right'));
         
         // Set up keyboard event listeners
         document.addEventListener('keydown', (event) => {
             if (event.key === 'ArrowUp') {
-                movePlayer('up');
+                moveNote('up');
             } else if (event.key === 'ArrowDown') {
-                movePlayer('down');
+                moveNote('down');
             } else if (event.key === 'ArrowLeft') {
-                movePlayer('left');
+                moveNote('left');
             } else if (event.key === 'ArrowRight') {
-                movePlayer('right');
+                moveNote('right');
             }
         });
 
