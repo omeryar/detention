@@ -17,6 +17,23 @@
         #game-container {
             text-align: center;
             position: relative;
+            background-image: url('classroom.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            max-width: 90vw;
+            max-height: 90vh;
+        }
+        #classroom-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 500px;
+            width: 100%;
         }
         #teacher-container {
             margin-bottom: 20px;
@@ -37,6 +54,7 @@
             justify-content: center;
             align-items: center;
             transition: transform 0.5s ease;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
         }
         #teacher.facing-blackboard {
             background-color: #795548;
@@ -97,12 +115,18 @@
             text-align: center;
             font-size: 14px;
             color: #333;
+            background-color: rgba(255, 255, 255, 0.7);
+            padding: 3px;
+            border-radius: 10px;
         }
         #lives-container {
             margin-top: 10px;
             display: flex;
             justify-content: center;
             gap: 10px;
+            background-color: rgba(255, 255, 255, 0.7);
+            padding: 5px 15px;
+            border-radius: 20px;
         }
         .life {
             width: 20px;
@@ -117,9 +141,11 @@
         #grid {
             display: inline-grid;
             gap: 2px;
-            background-color: #fff;
-            padding: 2px;
-            border: 2px solid #fff;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 10px;
+            margin: 20px 0;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
         .cell {
             width: 30px;
@@ -129,9 +155,10 @@
             align-items: center;
             font-weight: bold;
             cursor: pointer;
+            border-radius: 3px;
         }
         .road {
-            background-color: #fff;
+            background-color: rgba(255, 255, 255, 0.7);
         }
         .desk {
             background-color: #4CAF50;
@@ -169,16 +196,29 @@
             font-weight: bold;
             z-index: 100;
             transition: all 1s ease;
+            border-radius: 3px;
         }
         #message {
             margin-top: 20px;
             font-weight: bold;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         button {
             margin-top: 10px;
             padding: 10px 20px;
             font-size: 16px;
             cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        button:hover {
+            background-color: #45a049;
         }
         #controls {
             margin-top: 20px;
@@ -187,6 +227,9 @@
             grid-template-rows: repeat(3, 40px);
             gap: 5px;
             justify-content: center;
+            background-color: rgba(255, 255, 255, 0.7);
+            padding: 10px;
+            border-radius: 10px;
         }
         .arrow-btn {
             background-color: #ddd;
@@ -196,6 +239,7 @@
             justify-content: center;
             align-items: center;
             cursor: pointer;
+            border-radius: 5px;
         }
         .arrow-btn:hover {
             background-color: #ccc;
@@ -204,35 +248,37 @@
 </head>
 <body>
     <div id="game-container">
-        <div id="teacher-container">
-            <div id="teacher" class="facing-blackboard">
-                <div id="teacher-face">
-                    <div class="eye"></div>
-                    <div class="eye"></div>
+        <div id="classroom-area">
+            <div id="teacher-container">
+                <div id="teacher" class="facing-blackboard">
+                    <div id="teacher-face">
+                        <div class="eye"></div>
+                        <div class="eye"></div>
+                    </div>
+                    <div class="mouth"></div>
                 </div>
-                <div class="mouth"></div>
+                <div id="teacher-status">Safe to move</div>
             </div>
-            <div id="teacher-status">Safe to move</div>
+            <div id="lives-container">
+                <div class="life" id="life-1"></div>
+                <div class="life" id="life-2"></div>
+                <div class="life" id="life-3"></div>
+            </div>
+            <div id="grid"></div>
+            <div id="controls">
+                <div></div>
+                <div class="arrow-btn" id="up-btn">↑</div>
+                <div></div>
+                <div class="arrow-btn" id="left-btn">←</div>
+                <div></div>
+                <div class="arrow-btn" id="right-btn">→</div>
+                <div></div>
+                <div class="arrow-btn" id="down-btn">↓</div>
+                <div></div>
+            </div>
+            <div id="message"></div>
+            <button id="new-game">New Game</button>
         </div>
-        <div id="lives-container">
-            <div class="life" id="life-1"></div>
-            <div class="life" id="life-2"></div>
-            <div class="life" id="life-3"></div>
-        </div>
-        <div id="grid"></div>
-        <div id="controls">
-            <div></div>
-            <div class="arrow-btn" id="up-btn">↑</div>
-            <div></div>
-            <div class="arrow-btn" id="left-btn">←</div>
-            <div></div>
-            <div class="arrow-btn" id="right-btn">→</div>
-            <div></div>
-            <div class="arrow-btn" id="down-btn">↓</div>
-            <div></div>
-        </div>
-        <div id="message"></div>
-        <button id="new-game">New Game</button>
     </div>
 
     <script>
