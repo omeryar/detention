@@ -235,22 +235,34 @@
             grid-template-rows: repeat(3, 40px);
             gap: 5px;
             justify-content: center;
-            background-color: rgba(255, 255, 255, 0.7);
             padding: 10px;
-            border-radius: 10px;
+            border-radius: 4px;
+            image-rendering: pixelated;
         }
         .arrow-btn {
-            background-color: #ddd;
-            border: 1px solid #999;
-            font-size: 20px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 12px;
+            background-color: #d0d0d0;
+            border: 3px outset #e0e0e0;
             display: flex;
             justify-content: center;
             align-items: center;
             cursor: pointer;
-            border-radius: 5px;
+            color: #333;
+            text-shadow: 1px 1px 0px #fff;
+            box-shadow: 1px 1px 0px #000;
+            image-rendering: pixelated;
+            padding-bottom: 4px;
         }
         .arrow-btn:hover {
-            background-color: #ccc;
+            background-color: #e0e0e0;
+            border-style: outset;
+        }
+        .arrow-btn:active {
+            background-color: #b0b0b0;
+            border-style: inset;
+            transform: translate(1px, 1px);
+            box-shadow: none;
         }
 
     </style>
