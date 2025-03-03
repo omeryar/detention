@@ -16,6 +16,7 @@
         }
         #game-container {
             text-align: center;
+            position: relative;
         }
         #teacher-container {
             margin-bottom: 20px;
@@ -156,9 +157,18 @@
             position: relative;
             z-index: 10;
         }
-        .note.caught {
+        .floating-note {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background-color: #2196F3;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            z-index: 100;
             transition: all 1s ease;
-            transform: scale(0.5);
         }
         #message {
             margin-top: 20px;
@@ -254,6 +264,7 @@
         
         // Animation flag
         let isAnimating = false;
+        let floatingNote = null;
 
         function initializeGrid() {
             grid = Array(gridSize.rows).fill().map(() => Array(gridSize.cols).fill(SQUARE_TYPES.ROAD));
@@ -371,23 +382,34 @@
         }
 
         function updateGridDisplay() {
+            // Remove any floating note if it exists
+            if (floatingNote) {
+                floatingNote.remove();
+                floatingNote = null;
+            }
+            
             const cells = document.querySelectorAll('.cell');
             cells.forEach(cell => {
                 const row = parseInt(cell.dataset.row);
                 const col = parseInt(cell.dataset.col);
-                cell.classList.remove('path', 'note', 'caught');
+                
+                // Clear all dynamic classes and text
+                cell.classList.remove('path', 'note');
                 cell.textContent = '';
 
+                // Add start and end markers
                 if (row === startDesk.row && col === startDesk.col) {
                     cell.textContent = 'S';
                 } else if (row === endDesk.row && col === endDesk.col) {
                     cell.textContent = 'E';
                 }
 
+                // Add path markers
                 if (path.some(p => p.row === row && p.col === col)) {
                     cell.classList.add('path');
                 }
 
+                // Add note
                 if (notePosition.row === row && notePosition.col === col) {
                     cell.classList.add('note');
                     cell.textContent = 'N';
@@ -500,22 +522,44 @@
             const noteCell = document.querySelector(`.cell[data-row="${notePosition.row}"][data-col="${notePosition.col}"]`);
             const teacherElement = document.getElementById('teacher');
             
-            // Add caught class to start animation
-            noteCell.classList.add('caught');
+            // Remove the note class from the original cell but keep other classes
+            noteCell.classList.remove('note');
+            noteCell.textContent = '';
+            
+            // Create a floating note that will animate
+            const noteCellRect = noteCell.getBoundingClientRect();
+            
+            floatingNote = document.createElement('div');
+            floatingNote.className = 'floating-note';
+            floatingNote.textContent = 'N';
+            
+            // Position the floating note exactly over the original note cell
+            floatingNote.style.position = 'absolute';
+            floatingNote.style.left = noteCellRect.left + 'px';
+            floatingNote.style.top = noteCellRect.top + 'px';
+            
+            // Append to body for absolute positioning
+            document.body.appendChild(floatingNote);
             
             // Calculate position for animation
-            const noteCellRect = noteCell.getBoundingClientRect();
             const teacherRect = teacherElement.getBoundingClientRect();
             
             // Calculate the translation needed to move the note to the teacher
-            const translateX = teacherRect.left - noteCellRect.left + (teacherRect.width / 2) - (noteCellRect.width / 2);
-            const translateY = teacherRect.top - noteCellRect.top + (teacherRect.height / 2) - (noteCellRect.height / 2);
+            const translateX = (teacherRect.left - noteCellRect.left) + (teacherRect.width / 2) - (noteCellRect.width / 2);
+            const translateY = (teacherRect.top - noteCellRect.top) + (teacherRect.height / 2) - (noteCellRect.height / 2);
             
-            // Apply the translation
-            noteCell.style.transform = `translate(${translateX}px, ${translateY}px) scale(0.5)`;
+            // Apply the translation after a small delay to ensure proper rendering
+            setTimeout(() => {
+                floatingNote.style.transform = `translate(${translateX}px, ${translateY}px) scale(0.5)`;
+            }, 10);
             
             // After animation completes, reduce life and reset
             setTimeout(() => {
+                if (floatingNote) {
+                    floatingNote.remove();
+                    floatingNote = null;
+                }
+                
                 playerLives--;
                 updateLivesDisplay();
                 
@@ -528,10 +572,17 @@
                 
                 document.getElementById('message').textContent = `Note caught! ${playerLives} lives remaining.`;
                 
-                // Generate a new path but keep the same start and end desks
+                // Select new random desks for the next path
+                const desks = getDesks();
+                ({ start: startDesk, end: endDesk } = selectRandomDesks(desks));
+                
+                // Generate a new path between the new desks
                 path = generatePath(startDesk, endDesk);
                 notePosition = { ...startDesk };
-                updateGridDisplay();
+                
+                // Completely re-render the grid to ensure the path is updated
+                renderGrid();
+                
                 isAnimating = false;
             }, 1500); // Wait for animation to complete
         }
@@ -554,6 +605,12 @@
             
             // Reset animation flag
             isAnimating = false;
+            
+            // Remove any floating note if it exists
+            if (floatingNote) {
+                floatingNote.remove();
+                floatingNote = null;
+            }
             
             // Reset player lives
             playerLives = 3;
