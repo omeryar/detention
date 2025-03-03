@@ -187,6 +187,7 @@
         }
         .path {
             position: relative;
+            z-index: 10;
         }
         .path::after {
             content: "";
@@ -198,14 +199,17 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
+            z-index: 10;
         }
         .note {
-            position: relative;
-            z-index: 100;
+            position: absolute;
+            z-index: 150;
             background-image: url('note.png');
             background-size: 150% 150%;
             background-position: center;
             background-repeat: no-repeat;
+            width: 30px;
+            height: 30px;
         }
         .floating-note {
             position: absolute;
@@ -215,7 +219,7 @@
             background-size: 150% 150%;
             background-position: center;
             background-repeat: no-repeat;
-            z-index: 100;
+            z-index: 150;
             transition: all 1s ease;
             border-radius: 3px;
         }
@@ -227,6 +231,7 @@
             border-radius: 10px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             width: 100%;
+            max-width: 150px;
         }
         button {
             margin-top: 10px;
@@ -302,8 +307,8 @@
           <div class="arrow-btn" id="down-btn">↓</div>
           <div></div>
       </div>
-      <div id="message"></div>
       <button id="new-game">New Game</button>
+      <div id="message"></div>
   </div>
 
     <script>
@@ -524,38 +529,49 @@
         }
 
         function updateGridDisplay() {
-            // Remove any floating note if it exists
-            if (floatingNote) {
-                floatingNote.remove();
-                floatingNote = null;
-            }
-            
-            const cells = document.querySelectorAll('.cell');
-            cells.forEach(cell => {
+            // Update the grid display based on the current state
+            document.querySelectorAll('.cell').forEach(cell => {
                 const row = parseInt(cell.dataset.row);
                 const col = parseInt(cell.dataset.col);
                 
-                // Clear all dynamic classes and text
-                cell.classList.remove('path', 'note');
+                // Clear previous classes and content
+                cell.className = 'cell';
                 cell.textContent = '';
-
+                
+                // Add appropriate class based on grid content
+                cell.classList.add(grid[row][col]);
+                
                 // Add start and end markers
                 if (row === startDesk.row && col === startDesk.col) {
                     cell.textContent = 'S';
                 } else if (row === endDesk.row && col === endDesk.col) {
                     cell.textContent = 'E';
                 }
-
+                
                 // Add path markers
                 if (path.some(p => p.row === row && p.col === col)) {
                     cell.classList.add('path');
                 }
-
-                // Add note
-                if (notePosition.row === row && notePosition.col === col) {
-                    cell.classList.add('note');
+                
+                // Remove any existing note elements
+                const existingNote = document.querySelector('.note');
+                if (existingNote) {
+                    existingNote.remove();
                 }
             });
+            
+            // Add note as a separate element
+            if (notePosition) {
+                const noteCell = document.querySelector(`.cell[data-row="${notePosition.row}"][data-col="${notePosition.col}"]`);
+                if (noteCell) {
+                    const cellRect = noteCell.getBoundingClientRect();
+                    const noteElement = document.createElement('div');
+                    noteElement.className = 'note';
+                    noteElement.style.left = `${cellRect.left}px`;
+                    noteElement.style.top = `${cellRect.top}px`;
+                    document.body.appendChild(noteElement);
+                }
+            }
         }
 
         function renderGrid() {
