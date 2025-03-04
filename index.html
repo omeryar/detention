@@ -271,10 +271,74 @@
             transform: translate(1px, 1px);
             box-shadow: none;
         }
-
+        
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        #overlay-content {
+            background-color: #fff;
+            padding: 30px;
+            border: 4px solid #333;
+            border-radius: 8px;
+            text-align: center;
+            max-width: 500px;
+            font-family: 'Press Start 2P', cursive;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+        
+        #overlay h1 {
+            font-size: 32px;
+            color: #333;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 0px #ccc;
+        }
+        
+        #overlay p {
+            font-size: 12px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            color: #666;
+        }
+        
+        #start-button {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 14px;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 3px outset #45a049;
+        }
+        
+        #start-button:hover {
+            background-color: #45a049;
+        }
+        
+        #start-button:active {
+            border-style: inset;
+        }
     </style>
 </head>
 <body>
+    <div id="overlay">
+        <div id="overlay-content">
+            <h1>Detention</h1>
+            <p>Pass notes between students when the teacher isn't looking. If they catch you 3 times, it's detention for the whole class!</p>
+            <button id="start-button">Start Game</button>
+        </div>
+    </div>
     <div id="game-container">
         <div id="classroom-area">
             <div id="teacher-container">
@@ -886,34 +950,25 @@
             let validPathFound = false;
             let attempts = 0;
             
-            // Keep trying until we get a valid path
             while (!validPathFound && attempts < 10) {
                 attempts++;
                 ({ start: startDesk, end: endDesk } = selectRandomDesks(desks));
                 path = generatePath(startDesk, endDesk);
                 
-                // Check if we have a valid path
                 if (path && path.length > 1) {
                     validPathFound = true;
                 }
             }
             
-            // If we still don't have a valid path after 10 attempts,
-            // generate a more direct path between any two desks
             if (!validPathFound) {
-                console.log("Failed to find valid path after multiple attempts, creating direct path");
                 ({ start: startDesk, end: endDesk } = selectRandomDesks(desks));
                 path = createDirectPath(startDesk, endDesk);
             }
             
             notePosition = { ...startDesk };
             renderGrid();
-            document.getElementById('message').textContent = '';
             
-            // Reset animation flag
-            isAnimating = false;
-            
-            // Remove any floating note if it exists
+            // Clear any existing floating note
             if (floatingNote) {
                 floatingNote.remove();
                 floatingNote = null;
@@ -922,16 +977,56 @@
             // Reset teacher and game state
             difficultyLevel = 1;
             gameTime = 0;
-            setTeacherState(TEACHER_STATES.FACING_BLACKBOARD);
-            startTeacherBehavior();
-            startGameTimer();
         }
+
+        // Initialize game
+        document.addEventListener('DOMContentLoaded', () => {
+            startNewGame();
+            
+            // Add click handler for start button
+            document.getElementById('start-button').addEventListener('click', () => {
+                document.getElementById('overlay').style.display = 'none';
+            });
+            
+            // Set up event listeners for arrow buttons
+            document.getElementById('up-btn').addEventListener('click', () => moveNote('up'));
+            document.getElementById('down-btn').addEventListener('click', () => moveNote('down'));
+            document.getElementById('left-btn').addEventListener('click', () => moveNote('left'));
+            document.getElementById('right-btn').addEventListener('click', () => moveNote('right'));
+            
+            // Set up keyboard event listeners
+            document.addEventListener('keydown', (event) => {
+                if(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight' ].includes(event.key)) {
+                  event.preventDefault();
+                }
+                
+                if (event.key === 'ArrowUp') {
+                    moveNote('up');
+                } else if (event.key === 'ArrowDown') {
+                    moveNote('down');
+                } else if (event.key === 'ArrowLeft') {
+                    moveNote('left');
+                } else if (event.key === 'ArrowRight') {
+                    moveNote('right');
+                }
+            });
+
+            document.getElementById('new-game').addEventListener('click', startNewGame);
+
+            // Set up event listener for window resize
+            window.addEventListener('resize', function() {
+                // Remove existing desk containers
+                document.querySelectorAll('.desk-container').forEach(desk => desk.remove());
+                
+                // Add new desk containers with updated positions
+                addDeskContainers();
+            });
+            
+            // Start the game
+            startNewGame();
+        });
         
-        function stopGame() {
-            clearInterval(teacherStateTimer);
-            clearInterval(gameTimer);
-        }
-        
+        // Start the game timer
         function startGameTimer() {
             if (gameTimer) clearInterval(gameTimer);
             gameTimer = setInterval(() => {
@@ -943,11 +1038,13 @@
             }, 1000);
         }
         
+        // Start the teacher behavior
         function startTeacherBehavior() {
             if (teacherStateTimer) clearInterval(teacherStateTimer);
             updateTeacherState();
         }
         
+        // Update the teacher state
         function updateTeacherState() {
             const teacherElement = document.getElementById('teacher');
             const statusElement = document.getElementById('teacher-status');
@@ -977,6 +1074,7 @@
             }
         }
         
+        // Set the teacher state
         function setTeacherState(state) {
             teacherState = state;
             const teacherElement = document.getElementById('teacher');
@@ -1001,43 +1099,6 @@
                 statusElement.style.color = 'green';
             }
         }
-
-        // Set up event listeners for arrow buttons
-        document.getElementById('up-btn').addEventListener('click', () => moveNote('up'));
-        document.getElementById('down-btn').addEventListener('click', () => moveNote('down'));
-        document.getElementById('left-btn').addEventListener('click', () => moveNote('left'));
-        document.getElementById('right-btn').addEventListener('click', () => moveNote('right'));
-        
-        // Set up keyboard event listeners
-        document.addEventListener('keydown', (event) => {
-            if(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight' ].includes(event.key)) {
-              event.preventDefault();
-            }
-            
-            if (event.key === 'ArrowUp') {
-                moveNote('up');
-            } else if (event.key === 'ArrowDown') {
-                moveNote('down');
-            } else if (event.key === 'ArrowLeft') {
-                moveNote('left');
-            } else if (event.key === 'ArrowRight') {
-                moveNote('right');
-            }
-        });
-
-        document.getElementById('new-game').addEventListener('click', startNewGame);
-
-        // Set up event listener for window resize
-        window.addEventListener('resize', function() {
-            // Remove existing desk containers
-            document.querySelectorAll('.desk-container').forEach(desk => desk.remove());
-            
-            // Add new desk containers with updated positions
-            addDeskContainers();
-        });
-        
-        // Start the game
-        startNewGame();
     </script>
 </body>
 </html>
