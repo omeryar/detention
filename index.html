@@ -190,8 +190,8 @@
         .note {
             position: absolute;
             z-index: 150;
-            background-image: url('note.png');
-            background-size: 150% 150%;
+            background-image: url('note-2.png');
+            background-size: 100% 100%;
             background-position: center;
             background-repeat: no-repeat;
             width: 30px;
@@ -216,9 +216,13 @@
             background-color: rgba(255, 255, 255, 0.8);
             padding: 10px;
             border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            width: 100%;
+            text-align: center;
             max-width: 150px;
+            transition: opacity 0.5s;
+            opacity: 0;
+        }
+        #message.show {
+            opacity: 1;
         }
         button {
             font-family: 'Press Start 2P', cursive;
@@ -944,10 +948,14 @@
         function checkWinCondition() {
             if (notePosition.row === endDesk.row && notePosition.col === endDesk.col) {
                 updateScore(50);
+                const messageDiv = document.getElementById('message');
+                messageDiv.textContent = 'Note Delivered!';
+                messageDiv.classList.add('show');
+                
                 setTimeout(() => {
-                    alert('Congratulations! Note delivered successfully!');
+                    messageDiv.classList.remove('show');
                     startNewGame();
-                }, 500);
+                }, 2000);
             }
         }
 
