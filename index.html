@@ -196,6 +196,16 @@
             background-repeat: no-repeat;
             width: 30px;
             height: 30px;
+            pointer-events: none;
+        }
+        .note.shake {
+            animation: shake 0.5s ease-in-out;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            25% { transform: translate(-2px, 1px) rotate(-3deg); }
+            50% { transform: translate(1px, -1px) rotate(2deg); }
+            75% { transform: translate(-1px, 2px) rotate(-1deg); }
         }
         .floating-note {
             position: absolute;
@@ -439,6 +449,8 @@
         let isAnimating = false;
         let floatingNote = null;
         let score = 0;
+        let hasMovedSinceNewPath = false;
+        let shakeInterval = null;
 
         function initializeGrid() {
             grid = Array(gridSize.rows).fill().map(() => Array(gridSize.cols).fill(SQUARE_TYPES.ROAD));
@@ -793,6 +805,12 @@
         function moveNote(direction) {
             if (isAnimating) return; // Prevent movement during animation
             
+            hasMovedSinceNewPath = true; // Stop shaking after first move
+            if (shakeInterval) {
+                clearInterval(shakeInterval);
+                shakeInterval = null;
+            }
+            
             const currentIndex = path.findIndex(p => p.row === notePosition.row && p.col === notePosition.col);
             
             if (currentIndex === -1) return; // Note not on path
@@ -942,6 +960,9 @@
                     
                     // Update the display
                     updateGridDisplay();
+                    
+                    // Start note shaking for new path
+                    startNoteShaking();
                 } else {
                     // Game Over
                     document.getElementById('game-over-overlay').style.display = 'flex';
@@ -1004,6 +1025,32 @@
             setTeacherState(TEACHER_STATES.FACING_BLACKBOARD);
             startTeacherBehavior();
             startGameTimer();
+            
+            // Start note shaking
+            startNoteShaking();
+        }
+
+        function startNoteShaking() {
+            // Clear any existing shake interval
+            if (shakeInterval) {
+                clearInterval(shakeInterval);
+            }
+            
+            hasMovedSinceNewPath = false;
+            
+            // Start periodic shaking
+            shakeInterval = setInterval(() => {
+                const note = document.querySelector('.note');
+                if (note && !hasMovedSinceNewPath) {
+                    note.classList.add('shake');
+                    setTimeout(() => {
+                        note.classList.remove('shake');
+                    }, 500);
+                } else if (hasMovedSinceNewPath && shakeInterval) {
+                    clearInterval(shakeInterval);
+                    shakeInterval = null;
+                }
+            }, 3000); // Shake every 3 seconds
         }
 
         function showMessage(text, type, duration = 2000) {
