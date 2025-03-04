@@ -218,11 +218,19 @@
             border-radius: 10px;
             text-align: center;
             max-width: 150px;
-            transition: opacity 0.5s;
+            transition: all 0.5s;
             opacity: 0;
         }
         #message.show {
             opacity: 1;
+        }
+        #message.success {
+            color: #4CAF50;
+            text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.2);
+        }
+        #message.caught {
+            color: #ff3333;
+            text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.2);
         }
         button {
             font-family: 'Press Start 2P', cursive;
@@ -385,7 +393,7 @@
           <div class="arrow-btn" id="down-btn">▼</div>
           <div></div>
       </div>
-      <button id="new-game">New Game</button>
+      <!-- <button id="new-game">New Game</button> -->
       <div id="message"></div>
   </div>
 
@@ -904,6 +912,9 @@
                 playerLives--;
                 updateLivesDisplay();
                 
+                // Show caught message
+                showMessage('Caught!', 'caught');
+                
                 // Generate new path if the game isn't over
                 if (playerLives > 0) {
                     // Select new random desks for the next path
@@ -926,7 +937,6 @@
                     // If we still don't have a valid path after 10 attempts,
                     // generate a more direct path between any two desks
                     if (!validPathFound) {
-                        console.log("Failed to find valid path after multiple attempts, creating direct path");
                         ({ start: startDesk, end: endDesk } = selectRandomDesks(desks));
                         path = createDirectPath(startDesk, endDesk);
                     }
@@ -948,12 +958,9 @@
         function checkWinCondition() {
             if (notePosition.row === endDesk.row && notePosition.col === endDesk.col) {
                 updateScore(50);
-                const messageDiv = document.getElementById('message');
-                messageDiv.textContent = 'Note Delivered!';
-                messageDiv.classList.add('show');
+                showMessage('Note Delivered!', 'success');
                 
                 setTimeout(() => {
-                    messageDiv.classList.remove('show');
                     startNewGame();
                 }, 2000);
             }
@@ -1001,6 +1008,17 @@
             setTeacherState(TEACHER_STATES.FACING_BLACKBOARD);
             startTeacherBehavior();
             startGameTimer();
+        }
+
+        function showMessage(text, type, duration = 2000) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.className = ''; // Clear existing classes
+            messageDiv.classList.add('show', type);
+            
+            setTimeout(() => {
+                messageDiv.classList.remove('show');
+            }, duration);
         }
 
         // Initialize game
