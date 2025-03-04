@@ -48,6 +48,13 @@
             border-radius: 10px;
             margin-top: 20px;
         }
+        #score {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 14px;
+            margin-bottom: 20px;
+            color: #333;
+            text-shadow: 1px 1px 0px #fff;
+        }
         #teacher-container {
             margin-bottom: 20px;
             position: relative;
@@ -284,7 +291,8 @@
         </div>
     </div>
     <div id="game-controls">
-      <div id="controls">
+        <div id="score">Score: 0</div>
+        <div id="controls">
           <div></div>
           <div class="arrow-btn" id="up-btn">▲</div>
           <div></div>
@@ -329,6 +337,7 @@
         // Animation flag
         let isAnimating = false;
         let floatingNote = null;
+        let score = 0;
 
         function initializeGrid() {
             grid = Array(gridSize.rows).fill().map(() => Array(gridSize.cols).fill(SQUARE_TYPES.ROAD));
@@ -664,6 +673,11 @@
             }
         }
 
+        function updateScore(points) {
+            score += points;
+            document.getElementById('score').textContent = `Score: ${score}`;
+        }
+
         function isValidMove(position) {
             const currentIndex = path.findIndex(p => p.row === notePosition.row && p.col === notePosition.col);
             const clickedIndex = path.findIndex(p => p.row === position.row && p.col === position.col);
@@ -685,6 +699,7 @@
                 
                 notePosition = clickedPosition;
                 updateGridDisplay();
+                updateScore(10);
                 checkWinCondition();
             }
         }
@@ -746,6 +761,7 @@
                 
                 notePosition = nextPosition;
                 updateGridDisplay();
+                updateScore(10);
                 checkWinCondition();
             }
         }
@@ -828,6 +844,7 @@
                     // If we still don't have a valid path after 10 attempts,
                     // generate a more direct path between any two desks
                     if (!validPathFound) {
+                        console.log("Failed to find valid path after multiple attempts, creating direct path");
                         ({ start: startDesk, end: endDesk } = selectRandomDesks(desks));
                         path = createDirectPath(startDesk, endDesk);
                     }
@@ -851,50 +868,19 @@
 
         function checkWinCondition() {
             if (notePosition.row === endDesk.row && notePosition.col === endDesk.col) {
-                isAnimating = true; // Prevent further moves during transition
-                document.getElementById('message').textContent = 'Congratulations! Your note reached the destination!';
-                
-                // Wait a moment before generating a new path
+                updateScore(50);
                 setTimeout(() => {
-                    // Select new random desks for the next path
-                    const desks = getDesks();
-                    let validPathFound = false;
-                    let attempts = 0;
-                    
-                    // Keep trying until we get a valid path
-                    while (!validPathFound && attempts < 10) {
-                        attempts++;
-                        ({ start: startDesk, end: endDesk } = selectRandomDesks(desks));
-                        path = generatePath(startDesk, endDesk);
-                        
-                        // Check if we have a valid path
-                        if (path && path.length > 1) {
-                            validPathFound = true;
-                        }
-                    }
-                    
-                    // If we still don't have a valid path after 10 attempts,
-                    // generate a more direct path between any two desks
-                    if (!validPathFound) {
-                        console.log("Failed to find valid path after multiple attempts, creating direct path");
-                        ({ start: startDesk, end: endDesk } = selectRandomDesks(desks));
-                        path = createDirectPath(startDesk, endDesk);
-                    }
-                    
-                    notePosition = { ...startDesk };
-                    
-                    // Update the message
-                    document.getElementById('message').textContent = 'New note to pass! Keep going!';
-                    
-                    // Completely re-render the grid to ensure the path is updated
-                    renderGrid();
-                    
-                    isAnimating = false;
-                }, 2000); // Wait 2 seconds before generating new path
+                    alert('Congratulations! Note delivered successfully!');
+                    startNewGame();
+                }, 500);
             }
         }
 
         function startNewGame() {
+            playerLives = 3;
+            score = 0;
+            updateLivesDisplay();
+            updateScore(0);
             initializeGrid();
             const desks = getDesks();
             let validPathFound = false;
@@ -932,10 +918,6 @@
                 floatingNote.remove();
                 floatingNote = null;
             }
-            
-            // Reset player lives
-            playerLives = 3;
-            updateLivesDisplay();
             
             // Reset teacher and game state
             difficultyLevel = 1;
