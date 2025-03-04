@@ -68,15 +68,19 @@
             width: 80px;
             height: 120px;
             position: absolute;
-            top: 15%;
+            top: 10px;
             right: 15%;
             display: flex;
             justify-content: center;
             align-items: center;
-            transition: transform 0.5s ease;
+            transition: background-image 0.5s ease-in-out;
             background-size: contain;
             background-position: center;
             background-repeat: no-repeat;
+        }
+        #teacher.turn-left {
+            transform: scaleX(-1);
+            transition: none;
         }
         #teacher.facing-blackboard {
             background-image: url('teacher-blackboard.png');
@@ -427,7 +431,8 @@
         const TEACHER_STATES = {
             FACING_BLACKBOARD: 'facing-blackboard',
             HALFWAY: 'halfway',
-            FACING_CLASS: 'facing-class'
+            FACING_CLASS: 'facing-class',
+            TURNING: 'turning'
         };
 
         let grid, path, notePosition, startDesk, endDesk;
@@ -451,6 +456,7 @@
         let score = 0;
         let hasMovedSinceNewPath = false;
         let shakeInterval = null;
+        let teacherTurnDirection = 'right';
 
         function initializeGrid() {
             grid = Array(gridSize.rows).fill().map(() => Array(gridSize.cols).fill(SQUARE_TYPES.ROAD));
@@ -1140,28 +1146,87 @@
             const teacherElement = document.getElementById('teacher');
             const statusElement = document.getElementById('teacher-status');
             
+            teacherElement.classList.remove(
+                TEACHER_STATES.FACING_BLACKBOARD,
+                TEACHER_STATES.TURNING,
+                TEACHER_STATES.FACING_CLASS
+            );
+            
+            // Add the current state class
+            teacherElement.classList.add(teacherState);
+            
+            switch (teacherState) {
+                case TEACHER_STATES.FACING_BLACKBOARD:
+                    teacherElement.style.backgroundImage = "url('teacher-blackboard.png')";
+                    statusElement.textContent = "Safe to move";
+                    statusElement.style.color = 'green';
+                    break;
+                case TEACHER_STATES.TURNING:
+                    teacherElement.style.backgroundImage = "url('teacher-halfway.png')";
+                    statusElement.textContent = "Teacher is turning!";
+                    statusElement.style.color = 'orange';
+                    break;
+                case TEACHER_STATES.FACING_CLASS:
+                    teacherElement.style.backgroundImage = "url('teacher-class.png')";
+                    statusElement.textContent = "UNSAFE - Teacher watching!";
+                    statusElement.style.color = 'red';
+                    break;
+            }
+            
             // Calculate timing based on difficulty
             const blackboardTime = Math.max(5000 - (difficultyLevel * 500), 2000); // 5s to 2s
-            const halfwayTime = 1000; // Always 1s for transition
-            const classFacingTime = Math.min(2000 + (difficultyLevel * 300), 4000); // 2s to 4s
+            const turnTime = 1000; // Always 1s for transition
+            const classFacingTime = Math.max(3000 - (difficultyLevel * 300), 1500); // 3s to 1.5s
+            const fakeoutPause = 500; // Time to pause during fake-out
             
             // Transition through states
             if (teacherState === TEACHER_STATES.FACING_BLACKBOARD) {
-                // From blackboard to halfway
-                setTeacherState(TEACHER_STATES.HALFWAY);
-                teacherStateTimer = setTimeout(() => {
-                    // From halfway to class
-                    setTeacherState(TEACHER_STATES.FACING_CLASS);
+                // Choose turn direction before starting to turn
+                teacherTurnDirection = Math.random() < 0.5 ? 'right' : 'left';
+                teacherElement.classList.toggle('turn-left', teacherTurnDirection === 'left');
+                
+                // Start turning towards class
+                setTeacherState(TEACHER_STATES.TURNING);
+                
+                // Determine if this will be a fake-out turn (20% chance)
+                const isFakeout = Math.random() < 0.2;
+                
+                if (isFakeout) {
+                    // Do a fake-out turn: turn halfway, pause, then back to blackboard
                     teacherStateTimer = setTimeout(() => {
-                        // From class to halfway
-                        setTeacherState(TEACHER_STATES.HALFWAY);
+                        // Pause at halfway point
                         teacherStateTimer = setTimeout(() => {
-                            // From halfway to blackboard
+                            // Turn back to blackboard
                             setTeacherState(TEACHER_STATES.FACING_BLACKBOARD);
-                            teacherStateTimer = setTimeout(updateTeacherState, blackboardTime);
-                        }, halfwayTime);
-                    }, classFacingTime);
-                }, halfwayTime);
+                            teacherElement.classList.remove('turn-left');
+                            
+                            // Start the cycle again after blackboard time
+                            teacherStateTimer = setTimeout(() => {
+                                updateTeacherState();
+                            }, blackboardTime);
+                        }, fakeoutPause);
+                    }, turnTime);
+                } else {
+                    // Regular turn: complete the turn to face class
+                    teacherStateTimer = setTimeout(() => {
+                        setTeacherState(TEACHER_STATES.FACING_CLASS);
+                        
+                        // After facing class, always turn all the way back to blackboard
+                        teacherStateTimer = setTimeout(() => {
+                            setTeacherState(TEACHER_STATES.TURNING);
+                            
+                            teacherStateTimer = setTimeout(() => {
+                                setTeacherState(TEACHER_STATES.FACING_BLACKBOARD);
+                                teacherElement.classList.remove('turn-left');
+                                
+                                // Start the cycle again after blackboard time
+                                teacherStateTimer = setTimeout(() => {
+                                    updateTeacherState();
+                                }, blackboardTime);
+                            }, turnTime);
+                        }, classFacingTime);
+                    }, turnTime);
+                }
             }
         }
         
@@ -1171,23 +1236,31 @@
             const teacherElement = document.getElementById('teacher');
             const statusElement = document.getElementById('teacher-status');
             
-            // Remove all state classes
             teacherElement.classList.remove(
                 TEACHER_STATES.FACING_BLACKBOARD,
-                TEACHER_STATES.HALFWAY,
+                TEACHER_STATES.TURNING,
                 TEACHER_STATES.FACING_CLASS
             );
             
             // Add the current state class
             teacherElement.classList.add(state);
             
-            // Update status text
-            if (state === TEACHER_STATES.FACING_CLASS) {
-                statusElement.textContent = 'UNSAFE - Teacher watching!';
-                statusElement.style.color = 'red';
-            } else {
-                statusElement.textContent = 'Safe to move';
-                statusElement.style.color = 'green';
+            switch (state) {
+                case TEACHER_STATES.FACING_BLACKBOARD:
+                    teacherElement.style.backgroundImage = "url('teacher-blackboard.png')";
+                    statusElement.textContent = "Safe to move";
+                    statusElement.style.color = 'green';
+                    break;
+                case TEACHER_STATES.TURNING:
+                    teacherElement.style.backgroundImage = "url('teacher-halfway.png')";
+                    statusElement.textContent = "Teacher is turning!";
+                    statusElement.style.color = 'orange';
+                    break;
+                case TEACHER_STATES.FACING_CLASS:
+                    teacherElement.style.backgroundImage = "url('teacher-class.png')";
+                    statusElement.textContent = "UNSAFE - Teacher watching!";
+                    statusElement.style.color = 'red';
+                    break;
             }
         }
     </script>
