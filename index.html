@@ -209,6 +209,17 @@
             transition: all 1s ease;
             border-radius: 3px;
         }
+        .target {
+            position: absolute;
+            z-index: 140;
+            background-image: url('target.png');
+            background-size: 100% 100%;
+            background-position: center;
+            background-repeat: no-repeat;
+            width: 30px;
+            height: 30px;
+            pointer-events: none;
+        }
         #message {
             font-family: 'Press Start 2P', cursive;
             margin-top: 20px;
@@ -616,71 +627,56 @@
         }
 
         function updateGridDisplay() {
-            // Update the grid display based on the current state
+            // Clear existing note and target
+            const existingNote = document.querySelector('.note');
+            const existingTarget = document.querySelector('.target');
+            if (existingNote) existingNote.remove();
+            if (existingTarget) existingTarget.remove();
+            
+            // Update path display
             document.querySelectorAll('.cell').forEach(cell => {
                 const row = parseInt(cell.dataset.row);
                 const col = parseInt(cell.dataset.col);
                 
-                // Clear previous classes and content
-                cell.className = 'cell';
-                cell.textContent = '';
+                // Remove existing path classes
+                cell.classList.remove('path', 'up', 'down', 'left', 'right');
                 
-                // Add appropriate class based on grid content
-                cell.classList.add(grid[row][col]);
-                
-                // Add start and end markers
-                if (row === startDesk.row && col === startDesk.col) {
-                    cell.textContent = 'S';
-                } else if (row === endDesk.row && col === endDesk.col) {
-                    cell.textContent = 'E';
-                }
-                
-                // Add path markers with direction
+                // Add path classes if this cell is part of the path
                 const pathIndex = path.findIndex(p => p.row === row && p.col === col);
                 if (pathIndex !== -1) {
                     cell.classList.add('path');
                     
-                    // Determine direction by looking at next point in path
+                    // Determine direction for the arrow
                     if (pathIndex < path.length - 1) {
                         const nextPoint = path[pathIndex + 1];
-                        const dx = nextPoint.col - col;
-                        const dy = nextPoint.row - row;
-                        
-                        if (dx > 0) cell.classList.add('right');
-                        else if (dx < 0) cell.classList.add('left');
-                        else if (dy > 0) cell.classList.add('down');
-                        else if (dy < 0) cell.classList.add('up');
-                    } else if (pathIndex > 0) {
-                        // For the last point, use the direction from the previous point
-                        const prevPoint = path[pathIndex - 1];
-                        const dx = col - prevPoint.col;
-                        const dy = row - prevPoint.row;
-                        
-                        if (dx > 0) cell.classList.add('right');
-                        else if (dx < 0) cell.classList.add('left');
-                        else if (dy > 0) cell.classList.add('down');
-                        else if (dy < 0) cell.classList.add('up');
+                        if (nextPoint.row < row) cell.classList.add('up');
+                        else if (nextPoint.row > row) cell.classList.add('down');
+                        else if (nextPoint.col < col) cell.classList.add('left');
+                        else if (nextPoint.col > col) cell.classList.add('right');
                     }
-                }
-                
-                // Remove any existing note elements
-                const existingNote = document.querySelector('.note');
-                if (existingNote) {
-                    existingNote.remove();
                 }
             });
             
-            // Add note as a separate element
-            if (notePosition) {
-                const noteCell = document.querySelector(`.cell[data-row="${notePosition.row}"][data-col="${notePosition.col}"]`);
-                if (noteCell) {
-                    const cellRect = noteCell.getBoundingClientRect();
-                    const noteElement = document.createElement('div');
-                    noteElement.className = 'note';
-                    noteElement.style.left = `${cellRect.left}px`;
-                    noteElement.style.top = `${cellRect.top}px`;
-                    document.body.appendChild(noteElement);
-                }
+            // Add target at end position
+            const endCell = document.querySelector(`.cell[data-row="${endDesk.row}"][data-col="${endDesk.col}"]`);
+            if (endCell) {
+                const target = document.createElement('div');
+                target.className = 'target';
+                const rect = endCell.getBoundingClientRect();
+                target.style.left = `${rect.left + (rect.width - 30) / 2}px`;
+                target.style.top = `${rect.top + (rect.height - 30) / 2}px`;
+                document.body.appendChild(target);
+            }
+            
+            // Add note at current position
+            const currentCell = document.querySelector(`.cell[data-row="${notePosition.row}"][data-col="${notePosition.col}"]`);
+            if (currentCell) {
+                const note = document.createElement('div');
+                note.className = 'note';
+                const rect = currentCell.getBoundingClientRect();
+                note.style.left = `${rect.left + (rect.width - 30) / 2}px`;
+                note.style.top = `${rect.top + (rect.height - 30) / 2}px`;
+                document.body.appendChild(note);
             }
         }
 
@@ -1059,7 +1055,7 @@
                 }
             });
 
-            document.getElementById('new-game').addEventListener('click', startNewGame);
+            //document.getElementById('new-game').addEventListener('click', startNewGame);
 
             // Set up event listener for window resize
             window.addEventListener('resize', function() {
