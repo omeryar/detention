@@ -250,6 +250,7 @@
             max-width: 150px;
             transition: all 0.5s;
             opacity: 0;
+            min-height: 30px;
         }
         #message.show {
             opacity: 1;
@@ -1000,7 +1001,7 @@
         function checkWinCondition() {
             if (notePosition.row === endDesk.row && notePosition.col === endDesk.col) {
                 updateScore(50);
-                showMessage('Note Delivered!', 'success');
+                showMessage('Success!', 'success');
                 
                 setTimeout(() => {
                     deliverNote();
