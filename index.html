@@ -1001,16 +1001,18 @@
                 showMessage('Note Delivered!', 'success');
                 
                 setTimeout(() => {
-                    startNewGame();
+                    deliverNote();
                 }, 2000);
             }
         }
 
-        function startNewGame() {
-            playerLives = 3;
-            score = 0;
-            updateLivesDisplay();
-            updateScore(0);
+        function deliverNote() {
+            // Keep the current score
+            const currentScore = score;
+            const currentLives = playerLives;
+            const currentDifficulty = difficultyLevel;
+            
+            // Reset the game board but preserve score and lives
             initializeGrid();
             const desks = getDesks();
             let validPathFound = false;
@@ -1040,16 +1042,18 @@
                 floatingNote = null;
             }
             
-            // Reset teacher and game state
-            difficultyLevel = 1;
-            gameTime = 0;
+            // Restore score and lives
+            score = currentScore;
+            playerLives = currentLives;
+            updateLivesDisplay();
+            document.getElementById('score').textContent = `Score: ${score}`;
             
-            // Initialize teacher behavior
-            setTeacherState(TEACHER_STATES.FACING_BLACKBOARD);
+            // Increase difficulty slightly for each successful delivery
+            difficultyLevel = Math.min(currentDifficulty + 0.5, 10);
+            
+            // Continue teacher behavior
             startTeacherBehavior();
             startGameTimer();
-            
-            // Start note shaking
             startNoteShaking();
         }
 
@@ -1279,6 +1283,53 @@
                     statusElement.style.color = 'red';
                     break;
             }
+        }
+        
+        function startNewGame() {
+            playerLives = 3;
+            score = 0;
+            updateLivesDisplay();
+            updateScore(0);
+            initializeGrid();
+            const desks = getDesks();
+            let validPathFound = false;
+            let attempts = 0;
+            
+            while (!validPathFound && attempts < 10) {
+                attempts++;
+                ({ start: startDesk, end: endDesk } = selectRandomDesks(desks));
+                path = generatePath(startDesk, endDesk);
+                
+                if (path && path.length > 1) {
+                    validPathFound = true;
+                }
+            }
+            
+            if (!validPathFound) {
+                ({ start: startDesk, end: endDesk } = selectRandomDesks(desks));
+                path = createDirectPath(startDesk, endDesk);
+            }
+            
+            notePosition = { ...startDesk };
+            renderGrid();
+            
+            // Clear any existing floating note
+            if (floatingNote) {
+                floatingNote.remove();
+                floatingNote = null;
+            }
+            
+            // Reset teacher and game state
+            difficultyLevel = 1;
+            gameTime = 0;
+            
+            // Initialize teacher behavior
+            setTeacherState(TEACHER_STATES.FACING_BLACKBOARD);
+            startTeacherBehavior();
+            startGameTimer();
+            
+            // Start note shaking
+            startNoteShaking();
         }
     </script>
 </body>
